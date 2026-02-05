@@ -1,1 +1,83 @@
-1
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CON COST Groupware</title>
+  <link rel="stylesheet" href="styles.css?v=1" />
+</head>
+<body>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topInner">
+      <a href="#대쉬보드/home" class="brand" id="logoHome" aria-label="Home">
+        <img class="logoImg" src="assets/logo2.png" alt="CON COST" onerror="this.style.display='none'">
+      </a>
+
+      <div class="topCenter">
+        <div class="navWrap">
+          <div id="topTabs" class="topTabs"></div>
+
+          <!-- ✅ 메가메뉴: 산출 컬럼 제거 -->
+          <div id="megaMenu" class="mega-menu" aria-label="Mega Menu">
+            <div class="mega-inner">
+              <div class="mega-col">
+                <div class="mega-col-title">전자메일</div>
+                <div class="mega-col-items"></div>
+              </div>
+              <div class="mega-col">
+                <div class="mega-col-title">게시판</div>
+                <div class="mega-col-items"></div>
+              </div>
+              <div class="mega-col">
+                <div class="mega-col-title">전자결재</div>
+                <div class="mega-col-items"></div>
+              </div>
+              <div class="mega-col">
+                <div class="mega-col-title">일정관리</div>
+                <div class="mega-col-items"></div>
+              </div>
+              <div class="mega-col">
+                <div class="mega-col-title">업무관리</div>
+                <div class="mega-col-items"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="topRight"></div>
+    </div>
+  </header>
+
+  <!-- LAYOUT -->
+  <div class="app">
+    <aside class="side">
+      <div id="profileCard"></div>
+      <nav class="sideNav" id="sideMenu"></nav>
+      <div id="birthdayCard"></div>
+    </aside>
+
+    <main class="main">
+      <div id="routeTitle"></div>
+      <div id="badgePending"></div>
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toastHost"></div>
+
+  <div id="modalBackdrop" class="modalBackdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modalHead">
+        <div id="modalTitle" class="modalTitle"></div>
+        <button id="modalClose" class="btn tiny" type="button">닫기</button>
+      </div>
+      <div id="modalBody" class="modalBody"></div>
+      <div id="modalFoot" class="modalFoot"></div>
+    </div>
+  </div>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>
