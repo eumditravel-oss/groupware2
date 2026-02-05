@@ -817,285 +817,183 @@
   }
 
   function viewMail(db, sub){
-    if (!els.view) return;
-    els.view.innerHTML = "";
+  if (!els.view) return;
+  els.view.innerHTML = "";
 
-    const box = (sub === "mail-sent") ? "sent" : (sub === "mail-etc") ? "etc" : "inbox";
-    setRouteTitle(`전자메일 · ${box === "inbox" ? "받은메일함" : box === "sent" ? "보낸메일함" : "기타"}`);
+  const box = (sub === "mail-sent") ? "sent" : (sub === "mail-etc") ? "etc" : "inbox";
+  const title = `전자메일 · ${box === "inbox" ? "받은메일함" : box === "sent" ? "보낸메일함" : "기타"}`;
+  setRouteTitle(title);
 
-    const allItems = (db.mails || [])
-      .filter(m => m.box === box)
-      .slice()
-      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
-      .slice(0, 200);
+  const items = (db.mails || [])
+    .filter(m => m.box === box)
+    .slice()
+    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
+    .slice(0, 50);
 
-    const selField = dom(`
-      <select class="select">
-        <option value="subject">편지제목</option>
-        <option value="from">보낸사람</option>
-        <option value="all">제목+보낸사람</option>
-      </select>
-    `);
+  const card = dom(`
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">${escapeHtml(title)}</div>
+        <div class="badge">${items.length}건</div>
+      </div>
+      <div class="list"></div>
+    </div>
+  `);
 
-    const searchInput = dom(`<input class="input" placeholder="검색어 입력" />`);
-    const btnSearch = dom(`<button class="btn" type="button">찾기</button>`);
-    const btnReset  = dom(`<button class="btn ghost" type="button">초기화</button>`);
-    const countBadge = dom(`<div class="badge">${allItems.length}건</div>`);
-    const listHost = dom(`<div class="list"></div>`);
-
-    function draw(){
-      const q = (searchInput.value || "").trim().toLowerCase();
-      const field = selField.value;
-
-      const filtered = !q ? allItems : allItems.filter(m=>{
-        const s = String(m.subject||"").toLowerCase();
-        const f = String(m.from||"").toLowerCase();
-        if (field === "subject") return s.includes(q);
-        if (field === "from") return f.includes(q);
-        return s.includes(q) || f.includes(q);
-      });
-
-      countBadge.textContent = `${filtered.length}건`;
-
-      listHost.innerHTML = "";
-      if (!filtered.length){
-        listHost.appendChild(dom(`<div class="empty">자료가 존재하지 않습니다.</div>`));
-        return;
-      }
-
-      filtered.slice(0, 30).forEach(m=>{
-        listHost.appendChild(dom(`
+  const list = $(".list", card);
+  if (list){
+    if (!items.length){
+      list.appendChild(dom(`<div class="empty">자료가 존재하지 않습니다.</div>`));
+    } else {
+      items.forEach(m=>{
+        list.appendChild(dom(`
           <div class="list-item">
-            <div class="list-title">${escapeHtml(m.subject)}</div>
-            <div class="list-sub">${escapeHtml(`${m.from} · ${m.at}`)}</div>
+            <div class="list-title">${escapeHtml(m.subject || "")}</div>
+            <div class="list-sub">${escapeHtml(`${m.from || "-"} · ${m.at || "-"}`)}</div>
           </div>
         `));
       });
     }
-
-    btnSearch.addEventListener("click", draw);
-    btnReset.addEventListener("click", ()=>{
-      searchInput.value = "";
-      selField.value = "subject";
-      draw();
-    });
-    searchInput.addEventListener("keydown", (e)=>{ if (e.key === "Enter") draw(); });
-
-    const tools = dom(`<div class="mail-toolbar"></div>`);
-    tools.appendChild(selField);
-    tools.appendChild(searchInput);
-    tools.appendChild(btnSearch);
-    tools.appendChild(btnReset);
-
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">메일 목록</div>
-          <div class="row"></div>
-        </div>
-      </div>
-    `);
-    $(".row", card).appendChild(tools);
-    $(".row", card).appendChild(countBadge);
-    card.appendChild(listHost);
-
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
-
-    draw();
   }
 
-  function viewBoard(db, sub){
-    if (!els.view) return;
-    els.view.innerHTML = "";
+  els.view.appendChild(dom(`<div class="stack"></div>`));
+  $(".stack", els.view).appendChild(card);
+}
 
-    const labelMap = (SIDE_MENUS["게시판"] || []).reduce((acc,m)=>{ acc[m.key]=m.label; return acc; }, {});
-    const label = labelMap[sub] || "게시판";
-    setRouteTitle(`게시판 · ${label}`);
+function viewBoard(db, sub){
+  if (!els.view) return;
+  els.view.innerHTML = "";
 
-    const posts = (db.boardPosts || [])
-      .filter(p => String(p.boardKey||"") === String(sub||""))
-      .slice()
-      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
-      .slice(0, 30);
+  const labelMap = (SIDE_MENUS["게시판"] || []).reduce((acc,m)=>{ acc[m.key]=m.label; return acc; }, {});
+  const label = labelMap[sub] || "게시판";
+  const title = `게시판 · ${label}`;
+  setRouteTitle(title);
 
-    const searchInput = dom(`<input class="input" placeholder="검색(제목/작성자) - 데모" />`);
-    const btnSearch = dom(`<button class="btn" type="button">검색</button>`);
-    const listHost = dom(`<div class="list"></div>`);
+  const posts = (db.boardPosts || [])
+    .filter(p => String(p.boardKey||"") === String(sub||""))
+    .slice()
+    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
+    .slice(0, 50);
 
-    function draw(){
-      const q = (searchInput.value || "").trim().toLowerCase();
-      const filtered = !q ? posts : posts.filter(p =>
-        String(p.title||"").toLowerCase().includes(q) ||
-        String(p.writer||"").toLowerCase().includes(q)
-      );
+  const card = dom(`
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">${escapeHtml(title)}</div>
+        <div class="badge">${posts.length}건</div>
+      </div>
+      <div class="list"></div>
+    </div>
+  `);
 
-      listHost.innerHTML = "";
-      if (!filtered.length){
-        listHost.appendChild(dom(`<div class="empty">최근 게시물이 없습니다.</div>`));
-        return;
-      }
-      filtered.forEach(p=>{
-        listHost.appendChild(dom(`
+  const list = $(".list", card);
+  if (list){
+    if (!posts.length){
+      list.appendChild(dom(`<div class="empty">최근 게시물이 없습니다.</div>`));
+    } else {
+      posts.forEach(p=>{
+        list.appendChild(dom(`
           <div class="list-item">
-            <div class="list-title">${escapeHtml(p.title)}</div>
+            <div class="list-title">${escapeHtml(p.title || "")}</div>
             <div class="list-sub">${escapeHtml(`${p.writer || "-"} · ${p.at || "-"}`)}</div>
           </div>
         `));
       });
     }
-
-    btnSearch.addEventListener("click", draw);
-    searchInput.addEventListener("keydown",(e)=>{ if (e.key==="Enter") draw(); });
-
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">${escapeHtml(label)}</div>
-          <div class="row"></div>
-        </div>
-      </div>
-    `);
-    const row = $(".row", card);
-    row.appendChild(searchInput);
-    row.appendChild(btnSearch);
-    card.appendChild(listHost);
-
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
-
-    draw();
   }
 
-  function viewEA(db, sub){
-    if (!els.view) return;
-    els.view.innerHTML = "";
+  els.view.appendChild(dom(`<div class="stack"></div>`));
+  $(".stack", els.view).appendChild(card);
+}
 
-    const box = (sub === "ea-sent") ? "sent" : "inbox";
-    setRouteTitle(`전자결재 · ${box === "inbox" ? "받은결재함" : "보낸결재함"}`);
+function viewEA(db, sub){
+  if (!els.view) return;
+  els.view.innerHTML = "";
 
-    const items = (db.approvals || [])
-      .filter(d => d.box === box)
-      .slice()
-      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
-      .slice(0, 30);
+  const box = (sub === "ea-sent") ? "sent" : "inbox";
+  const title = `전자결재 · ${box === "inbox" ? "받은결재함" : "보낸결재함"}`;
+  setRouteTitle(title);
 
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">${box === "inbox" ? "받은결재함" : "보낸결재함"}</div>
-          <div class="badge">${items.length}건</div>
-        </div>
+  const items = (db.approvals || [])
+    .filter(d => d.box === box)
+    .slice()
+    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
+    .slice(0, 50);
+
+  const card = dom(`
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">${escapeHtml(title)}</div>
+        <div class="badge">${items.length}건</div>
       </div>
-    `);
+      <div class="list"></div>
+    </div>
+  `);
 
+  const list = $(".list", card);
+  if (list){
     if (!items.length){
-      card.appendChild(dom(`<div class="empty">자료가 존재하지 않습니다.</div>`));
+      list.appendChild(dom(`<div class="empty">자료가 존재하지 않습니다.</div>`));
     } else {
-      const list = dom(`<div class="list"></div>`);
       items.forEach(d=>{
         list.appendChild(dom(`
           <div class="list-item">
-            <div class="list-title">${escapeHtml(d.title)}</div>
-            <div class="list-sub">${escapeHtml(`${d.from} · ${d.at}`)}</div>
+            <div class="list-title">${escapeHtml(d.title || "")}</div>
+            <div class="list-sub">${escapeHtml(`${d.from || "-"} · ${d.at || "-"}`)}</div>
             <div class="list-sub">${escapeHtml(`상태: ${d.status || "-"}`)}</div>
           </div>
         `));
       });
-      card.appendChild(list);
     }
-
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
   }
 
-  function viewSchedule(db, sub){
-    if (!els.view) return;
-    els.view.innerHTML = "";
+  els.view.appendChild(dom(`<div class="stack"></div>`));
+  $(".stack", els.view).appendChild(card);
+}
 
-    const title = (sub === "vacation") ? "휴가관리" : "회사공식일정";
-    setRouteTitle(`일정관리 · ${title}`);
+function viewSchedule(db, sub){
+  if (!els.view) return;
+  els.view.innerHTML = "";
 
-    // 캘린더 + (휴가/외근) 리스트
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
+  const label = (sub === "vacation") ? "휴가관리" : "회사공식일정";
+  const title = `일정관리 · ${label}`;
+  setRouteTitle(title);
 
-    function simpleCalendarHtml(){
-      const first = new Date(y, m, 1);
-      const last = new Date(y, m+1, 0);
-      const dow = first.getDay();
-      const days = last.getDate();
+  // ✅ 구형 UI: 캘린더 제거, 리스트만 표시
+  const items = (db.staffSchedules || [])
+    .slice()
+    .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
+    .slice(0, 50);
 
-      const cells = [];
-      for (let i=0;i<dow;i++) cells.push(`<div class="cal-cell cal-empty"></div>`);
-      for (let d=1; d<=days; d++){
-        const dateISO = `${y}-${pad2(m+1)}-${pad2(d)}`;
-        const chips = (db.staffSchedules||[])
-          .filter(x=>x.date===dateISO)
-          .slice(0,2)
-          .map(x=>`<div class="chip">${escapeHtml(x.type)}</div>`)
-          .join("");
-        cells.push(`
-          <div class="cal-cell">
-            <div class="cal-day">${d}</div>
-            ${chips ? `<div class="chips">${chips}</div>` : ``}
-          </div>
-        `);
-      }
-      while (cells.length % 7 !== 0) cells.push(`<div class="cal-cell cal-empty"></div>`);
-
-      return `
-        <div class="cal-dow">
-          <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
-        </div>
-        <div class="cal-grid">${cells.join("")}</div>
-      `;
-    }
-
-    const listItems = (db.staffSchedules || [])
-      .slice()
-      .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
-      .slice(0, 20);
-
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">${escapeHtml(title)}</div>
-          <div class="muted small">MVP(읽기 전용)</div>
-        </div>
-        <div class="schedWide">
-          <div class="schedPanel">
-            <div class="schedTitle">${y}-${pad2(m+1)}</div>
-            ${simpleCalendarHtml()}
-          </div>
-          <div class="schedPanel">
-            <div class="schedTitle">휴가/외근 목록</div>
-            <div class="list"></div>
-          </div>
-        </div>
+  const card = dom(`
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">${escapeHtml(title)}</div>
+        <div class="badge">${items.length}건</div>
       </div>
-    `);
+      <div class="list"></div>
+    </div>
+  `);
 
-    const list = $(".list", card);
-    if (list){
-      if (!listItems.length){
-        list.appendChild(dom(`<div class="empty">표시할 일정이 없습니다</div>`));
-      } else {
-        listItems.forEach(e=>{
-          list.appendChild(dom(`
-            <div class="list-item">
-              <div class="list-title">${escapeHtml(`${e.type} · ${e.name}`)}</div>
-              <div class="list-sub">${escapeHtml(`${e.date} · ${e.note||""}`.trim())}</div>
-            </div>
-          `));
-        });
-      }
+  const list = $(".list", card);
+  if (list){
+    if (!items.length){
+      list.appendChild(dom(`<div class="empty">표시할 일정이 없습니다</div>`));
+    } else {
+      items.forEach(e=>{
+        list.appendChild(dom(`
+          <div class="list-item">
+            <div class="list-title">${escapeHtml(`${e.type || "-"} · ${e.name || "-"}`)}</div>
+            <div class="list-sub">${escapeHtml(`${e.date || "-"} · ${e.note || ""}`.trim())}</div>
+          </div>
+        `));
+      });
     }
-
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
   }
+
+  els.view.appendChild(dom(`<div class="stack"></div>`));
+  $(".stack", els.view).appendChild(card);
+}
+
 
   function viewWorkShortcut(){
     if (!els.view) return;
