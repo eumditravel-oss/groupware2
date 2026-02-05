@@ -1,1 +1,80 @@
-1
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>업무관리 (CON COST)</title>
+  <link rel="stylesheet" href="styles2.css?v=1" />
+</head>
+<body>
+  <header class="wTop">
+    <div class="wBrand">
+      <div class="wTitle">업무관리</div>
+      <div class="wSub">Work / Approval / Time / Checklist (분리 모듈)</div>
+    </div>
+    <div class="wActions">
+      <button class="wBtn" id="btnBack">그룹웨어로 돌아가기</button>
+    </div>
+  </header>
+
+  <div class="wApp">
+    <!-- LEFT NAV -->
+    <aside class="wSide">
+      <div class="wSideSection">
+        <div class="wSideTitle">메뉴</div>
+        <nav id="wMenu" class="wMenu"></nav>
+      </div>
+    </aside>
+
+    <!-- LIST -->
+    <section class="wList">
+      <div class="wListHead">
+        <div class="wListTitle" id="wListTitle">업무일지</div>
+        <button class="wBtn primary" id="btnCreate">+ Create</button>
+      </div>
+      <div id="wItems" class="wItems"></div>
+    </section>
+
+    <!-- DETAIL -->
+    <section class="wDetail">
+      <div class="wDetailHead">
+        <div class="wDetailTitle" id="wDetailTitle">상세</div>
+        <div class="wPills">
+          <span class="wPill">Job</span>
+          <span class="wPill">Project</span>
+          <span class="wPill">Deadline</span>
+        </div>
+      </div>
+      <div id="wDetailBody" class="wDetailBody"></div>
+    </section>
+
+    <!-- RIGHT INFO -->
+    <aside class="wRight">
+      <div class="wCard">
+        <div class="wCardTitle">오늘</div>
+        <div class="wWeather">
+          <div class="wTemp">17°C</div>
+          <div class="wSky">Weather (placeholder)</div>
+        </div>
+      </div>
+
+      <div class="wCard">
+        <div class="wCardTitle">태그</div>
+        <div class="wTagRow">
+          <button class="wTag active">Project</button>
+          <button class="wTag">Bills</button>
+          <button class="wTag">Freetime</button>
+          <button class="wTag">Deadline</button>
+        </div>
+      </div>
+
+      <div class="wCard">
+        <div class="wCardTitle">캘린더</div>
+        <div id="wMiniCal" class="wMiniCal"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="app2.js?v=1"></script>
+</body>
+</html>
