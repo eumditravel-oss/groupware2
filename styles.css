@@ -1,8 +1,6 @@
 /* styles.css (FULL) - Groupware Main (탭: 전자메일/게시판/전자결재/일정관리/업무관리)
-   ✅ 반영
-   1) 대분류 탭에서 "산출" 제거
-   2) 대쉬보드 4분할(메일/게시판/결재 + 일정 와이드)
-   3) 일정 카드 = 달력 + 다가오는 휴가/외근(placeholder)
+   ✅ 유지: 산출 제거 / 대쉬보드 4분할(일정 와이드) / sticky topbar / mega menu 5컬럼
+   ✅ 추가: profileCard/birthdayCard 기본 카드가 “확실히 보이도록” 최소 스타일 보강
 */
 
 /* =========================
@@ -256,7 +254,7 @@ header.topbar .topRight{
   transform: translate(-50%, 0) !important;
 }
 
-/* 5컬럼(산출 제거) */
+/* 5컬럼 */
 #megaMenu .mega-inner{
   width: min(1080px, calc(110vw - 380px)) !important;
   background: rgba(255,255,255,.98) !important;
@@ -282,7 +280,6 @@ header.topbar .topRight{
   border-left: 1px solid rgba(0,0,0,.10) !important;
 }
 
-/* 타이틀 숨김 유지 */
 #megaMenu .mega-col-title{ display:none !important; margin:0 !important; padding:0 !important; height:0 !important; }
 
 #megaMenu .mega-col-items{
@@ -485,11 +482,24 @@ header.topbar .topRight{
 .muted{ color:var(--muted); }
 .small{ font-size:12px; }
 
+/* ✅ profileCard/birthdayCard 최소 보강(안보이는 이슈 방지용) */
+.profileCard, .bdayCard{ min-width: 0; }
+.bdayHead{ display:flex; align-items:center; justify-content:space-between; }
+.bdayTitle{ font-weight:1100; }
+.bdayEmpty{
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(0,0,0,.18);
+  background: rgba(255,255,255,.78);
+  color: var(--muted);
+  font-weight: 900;
+  font-size: 13px;
+  text-align: center;
+}
+
 /* =========================
    DASHBOARD
-   ✅ 구성:
-   - 1행: 전자메일 / 게시판
-   - 2행: 전자결재 / 일정관리(와이드: 2칸)
 ========================= */
 .dashWrap{ display:flex; flex-direction:column; gap:14px; }
 
@@ -601,7 +611,7 @@ header.topbar .topRight{
   text-align: center;
 }
 
-/* CALENDAR (간단 placeholder) */
+/* CALENDAR */
 .cal-dow{
   display:grid;
   grid-template-columns: repeat(7, 1fr);
