@@ -1,406 +1,694 @@
-/* app.js (Groupware Main) v1
+/* styles.css (FULL) - Groupware Main (탭: 전자메일/게시판/전자결재/일정관리/업무관리)
    ✅ 반영
-   1) 대분류 탭: 전자메일 / 게시판 / 전자결재 / 일정관리 / 업무관리 (산출 제거)
-   2) 업무관리 소메뉴: "업무관리 바로가기"만 남김
-      - 클릭 시 app2.html 새 창 오픈(기능은 app2.js로 분리)
-   3) 대쉬보드: 전자메일/게시판/전자결재 + 일정(와이드)
-   4) birthdayCard는 대쉬보드에서만 노출
+   1) 대분류 탭에서 "산출" 제거
+   2) 대쉬보드 4분할(메일/게시판/결재 + 일정 와이드)
+   3) 일정 카드 = 달력 + 다가오는 휴가/외근(placeholder)
 */
 
-(() => {
-  "use strict";
+/* =========================
+   ROOT
+========================= */
+:root{
+  --bg:#f4f6f9;
+  --bg2:#eef2f7;
 
-  const $ = (s, el=document) => el.querySelector(s);
-  const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+  --paper:#ffffff;
+  --paper2: rgba(255,255,255,.86);
 
-  const els = {
-    topTabs: $("#topTabs"),
-    megaMenu: $("#megaMenu"),
-    sideMenu: $("#sideMenu"),
-    view: $("#view"),
-    birthdayCard: $("#birthdayCard"),
-    profileCard: $("#profileCard"),
-    logoHome: $("#logoHome"),
-    toast: $("#toast"),
-  };
+  --ink:#1d1d1f;
+  --muted:#6b6b73;
 
-  // ✅ 탭 순서: 전자메일 / 게시판 / 전자결재 / 일정관리 / 업무관리
-  const TOP_TABS = [
-    { key:"전자메일", label:"전자메일" },
-    { key:"게시판", label:"게시판" },
-    { key:"전자결재", label:"전자결재" },
-    { key:"일정관리", label:"일정관리" },
-    { key:"업무관리", label:"업무관리" },
-  ];
+  --line: rgba(0,0,0,.10);
+  --softLine: rgba(0,0,0,.06);
 
-  // ✅ 사이드 메뉴 (업무관리=바로가기만)
-  const SIDE_MENUS = {
-    "전자메일": [
-      { key:"inbox", label:"받은메일(placeholder)", route:"#전자메일/inbox" },
-    ],
-    "게시판": [
-      { key:"notice", label:"공지사항(placeholder)", route:"#게시판/notice" },
-      { key:"free", label:"자유게시판(placeholder)", route:"#게시판/free" },
-    ],
-    "전자결재": [
-      { key:"pending", label:"결재 대기(placeholder)", route:"#전자결재/pending" },
-      { key:"done", label:"결재 완료(placeholder)", route:"#전자결재/done" },
-    ],
-    "일정관리": [
-      { key:"calendar", label:"캘린더(placeholder)", route:"#일정관리/calendar" },
-      { key:"leave", label:"휴가/외근(placeholder)", route:"#일정관리/leave" },
-    ],
-    "업무관리": [
-      { key:"work2", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" },
-    ],
-  };
+  --shadow: 0 10px 26px rgba(0,0,0,.08);
+  --shadow2: 0 14px 34px rgba(0,0,0,.12);
 
-  // ---------------------------
-  // UI helpers
-  // ---------------------------
-  function toast(msg){
-    const host = els.toast;
-    const t = document.createElement("div");
-    t.className = "t";
-    t.textContent = msg;
-    host.appendChild(t);
-    setTimeout(() => t.remove(), 2200);
+  --radius: 18px;
+
+  --accent:#f08a24;
+  --accent2:#ffb55a;
+
+  --accentSoft: rgba(240,138,36,.10);
+  --accentSoft2: rgba(240,138,36,.18);
+  --accentLine: rgba(240,138,36,.35);
+
+  --topbarH: 74px;
+  --sideW: 260px;
+
+  --minMainW: 820px;
+
+  --pillBg: rgba(255,255,255,.92);
+  --pillBorder: rgba(0,0,0,.06);
+  --pillShadow: 0 10px 24px rgba(0,0,0,.06);
+
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%236b6b73' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+
+  --topbarMaxW: 3000px;
+  --navMaxW: 3000px;
+  --topTabsGap: 160px;
+}
+
+/* =========================
+   BASE
+========================= */
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+html{ color-scheme: light; }
+html{ background: var(--bg); }
+
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", "Malgun Gothic";
+  color:var(--ink);
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 100%;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 700px at 18% -10%, rgba(255,181,90,.18), transparent 60%),
+    radial-gradient(900px 520px at 85% 0%, rgba(240,138,36,.10), transparent 62%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+}
+
+a{ color:inherit; text-decoration:none; }
+.hidden{ display:none !important; }
+
+button, select, input, textarea{
+  -webkit-appearance: none;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+}
+
+/* =========================================================
+   TOPBAR (Apple-like)
+========================================================= */
+header.topbar{
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 200 !important;
+
+  padding: 0 !important;
+  height: 52px !important;
+
+  background: rgba(245,245,247,.92) !important;
+  backdrop-filter: blur(8px) !important;
+  border-bottom: 1px solid rgba(0,0,0,.08) !important;
+
+  display: flex !important;
+  align-items: center !important;
+}
+
+header.topbar .topInner{
+  width: 100% !important;
+  max-width: var(--topbarMaxW) !important;
+  margin: 0 auto !important;
+
+  height: 52px !important;
+  display: grid !important;
+  grid-template-columns: 160px 1fr 160px !important;
+  align-items: center !important;
+
+  padding: 0 18px !important;
+  gap: 12px !important;
+}
+
+header.topbar .brand,
+header.topbar .topCenter,
+header.topbar .topRight{
+  min-width: 0;
+}
+
+header.topbar .brand{
+  padding: 0 !important;
+  border-radius: 0 !important;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.logoImg{
+  width: 120px !important;
+  height: 34px !important;
+  object-fit: contain !important;
+  display:block;
+}
+
+header.topbar .topCenter{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+}
+
+header.topbar .topRight{
+  width: 160px !important;
+  flex: 0 0 auto;
+}
+
+.navWrap{
+  position: relative !important;
+  width: auto !important;
+  max-width: var(--navMaxW) !important;
+  margin: 0 auto !important;
+}
+
+#topTabs.topTabs{
+  width: auto !important;
+  max-width: 100% !important;
+
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: var(--topTabsGap) !important;
+  padding: 0 !important;
+
+  overflow: visible !important;
+}
+
+#topTabs .topTab,
+#topTabs .top-tab,
+#topTabs button,
+#topTabs a{
+  position: relative !important;
+
+  width: auto !important;
+  flex: 0 0 auto !important;
+
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+
+  padding: 10px 2px !important;
+  font-weight: 800 !important;
+  font-size: 12.5px !important;
+  color: rgba(0,0,0,.82) !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+}
+
+@media (hover:hover) and (pointer:fine){
+  #topTabs .topTab:hover,
+  #topTabs .top-tab:hover,
+  #topTabs button:hover,
+  #topTabs a:hover{
+    color: rgba(0,0,0,.95) !important;
   }
+}
 
-  function setActiveTopTab(tabKey){
-    $$("#topTabs .topTab").forEach(b => {
-      b.classList.toggle("active", b.dataset.key === tabKey);
-    });
+#topTabs .topTab.active::after,
+#topTabs .top-tab.active::after{
+  content:"" !important;
+  position:absolute !important;
+  left: 20% !important;
+  right: 20% !important;
+  bottom: 6px !important;
+  height: 2px !important;
+  border-radius: 999px !important;
+  background: var(--accent) !important;
+  opacity: 1 !important;
+}
+
+#topTabs .topTab.active,
+#topTabs .top-tab.active{
+  color: var(--accent) !important;
+}
+
+/* MEGA MENU */
+#megaMenu.mega-menu{
+  position: absolute !important;
+  left: 50% !important;
+  right: auto !important;
+  top: 52px !important;
+  transform: translate(-50%, -6px) !important;
+
+  z-index: 300 !important;
+  padding-top: 10px !important;
+
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity .14s ease, transform .14s ease !important;
+}
+
+#megaMenu.mega-menu.open{
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translate(-50%, 0) !important;
+}
+
+/* 5컬럼(산출 제거) */
+#megaMenu .mega-inner{
+  width: min(1080px, calc(110vw - 380px)) !important;
+  background: rgba(255,255,255,.98) !important;
+  border: 1px solid rgba(0,0,0,.10) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 18px 55px rgba(0,0,0,.12) !important;
+
+  padding: 22px 20px !important;
+
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+
+  max-height: min(72vh, 720px) !important;
+  overflow: auto !important;
+}
+
+#megaMenu .mega-col{
+  padding: 4px 22px 10px !important;
+  min-width: 0 !important;
+}
+#megaMenu .mega-col + .mega-col{
+  border-left: 1px solid rgba(0,0,0,.10) !important;
+}
+
+/* 타이틀 숨김 유지 */
+#megaMenu .mega-col-title{ display:none !important; margin:0 !important; padding:0 !important; height:0 !important; }
+
+#megaMenu .mega-col-items{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding-top: 6px !important;
+}
+
+#megaMenu .mega-item{
+  font-weight: 800 !important;
+  font-size: 12.5px !important;
+  color: rgba(0,0,0,.72) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+
+  padding: 6px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+
+  transition: color .12s ease, text-decoration-color .12s ease !important;
+  text-decoration: none !important;
+}
+@media (hover:hover) and (pointer:fine){
+  #megaMenu .mega-item:hover{
+    color: rgba(0,0,0,.95) !important;
+    text-decoration: underline !important;
+    text-underline-offset: 3px;
   }
+}
 
-  function setActiveSide(route){
-    $$("#sideMenu .side-item").forEach(b => {
-      b.classList.toggle("active", b.dataset.route === route);
-    });
+/* 반응형 */
+@media (max-width: 1200px){
+  #megaMenu .mega-inner{
+    grid-template-columns: repeat(3, minmax(0,1fr)) !important;
+    width: min(980px, calc(100vw - 60px)) !important;
   }
-
-  function renderTopTabs(){
-    els.topTabs.innerHTML = "";
-    TOP_TABS.forEach(t => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "topTab";
-      btn.dataset.key = t.key;
-      btn.textContent = t.label;
-      btn.addEventListener("click", () => {
-        // 기본 진입 라우트: 탭별 첫 메뉴 or 대쉬보드
-        const first = (SIDE_MENUS[t.key] && SIDE_MENUS[t.key][0]) ? SIDE_MENUS[t.key][0].route : "#대쉬보드/home";
-        location.hash = first;
-      });
-      els.topTabs.appendChild(btn);
-    });
+  #megaMenu .mega-col:nth-child(4){ border-left: none !important; }
+}
+@media (max-width: 760px){
+  #megaMenu .mega-inner{
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    width: min(720px, calc(100vw - 40px)) !important;
   }
+  #megaMenu .mega-col:nth-child(3),
+  #megaMenu .mega-col:nth-child(5){ border-left: none !important; }
+}
 
-  function renderMegaMenu(){
-    // index.html의 mega-col 순서와 동일(전자메일/게시판/전자결재/일정관리/업무관리)
-    const cols = $$("#megaMenu .mega-col");
-    const keys = ["전자메일","게시판","전자결재","일정관리","업무관리"];
+/* =========================
+   LAYOUT
+========================= */
+.app{
+  display:flex;
+  overflow: visible;
+  min-height: 100vh;
+  min-width: calc(var(--sideW) + var(--minMainW));
+}
 
-    keys.forEach((k, i) => {
-      const itemsWrap = $(".mega-col-items", cols[i]);
-      itemsWrap.innerHTML = "";
-      const menus = SIDE_MENUS[k] || [];
-      menus.forEach(m => {
-        const a = document.createElement("a");
-        a.href = m.route;
-        a.className = "mega-item";
-        a.textContent = m.label;
-        a.addEventListener("click", (e) => {
-          if (m.action === "openApp2") {
-            e.preventDefault();
-            openApp2();
-          } else {
-            // mega menu 닫기
-            closeMega();
-          }
-        });
-        itemsWrap.appendChild(a);
-      });
-    });
+.side{
+  width: var(--sideW);
+  flex: 0 0 var(--sideW);
 
-    // hover로 열리게(간단)
-    const wrap = $(".navWrap");
-    wrap.addEventListener("mouseenter", () => openMega());
-    wrap.addEventListener("mouseleave", () => closeMega());
+  padding: 12px 10px 16px;
+  border-right: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.62);
+  overflow: visible;
+}
+
+.sideNav{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding: 6px 6px 0;
+  overflow: visible;
+}
+
+.sideLink,
+.side-item{
+  position: relative;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+
+  padding: 11px 12px 11px 14px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+
+  background: transparent;
+  cursor:pointer;
+  font-weight: 950;
+  font-size: 13px;
+  color: #3a3a40;
+
+  transition: background .12s ease, border-color .12s ease, transform .08s ease;
+}
+@media (hover:hover) and (pointer:fine){
+  .sideLink:hover,
+  .side-item:hover{
+    background: rgba(255,255,255,.70);
+    border-color: rgba(0,0,0,.06);
+    transform: translateY(-1px);
   }
+}
+.sideLink.active,
+.side-item.active{
+  background: rgba(255,255,255,.92);
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 10px 18px rgba(0,0,0,.06);
+}
+.sideLink.active::before,
+.side-item.active::before{
+  content:"";
+  position:absolute;
+  left:6px;
+  top:50%;
+  transform: translateY(-50%);
+  width:4px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+}
 
-  function openMega(){ els.megaMenu.classList.add("open"); }
-  function closeMega(){ els.megaMenu.classList.remove("open"); }
+.main{
+  flex:1;
+  min-width: var(--minMainW);
+  padding: 16px 18px 26px;
+  overflow: visible;
+}
 
-  function renderSideMenu(tabKey){
-    const list = SIDE_MENUS[tabKey] || [];
-    els.sideMenu.innerHTML = "";
-    list.forEach(m => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "side-item";
-      btn.dataset.route = m.route;
-      btn.textContent = m.label;
-      btn.addEventListener("click", () => {
-        if (m.action === "openApp2") openApp2();
-        else location.hash = m.route;
-      });
-      els.sideMenu.appendChild(btn);
-    });
-  }
+.view{
+  min-height: 520px;
+  overflow: visible;
+}
 
-  // ---------------------------
-  // Profile / Birthday (placeholder)
-  // ---------------------------
-  function renderProfile(){
-    els.profileCard.innerHTML = `
-      <div class="card profileCard">
-        <div class="card-title">프로필</div>
-        <div class="stack" style="margin-top:10px">
-          <div class="row"><b>사용자</b><span class="muted small">Park Yongjin</span></div>
-          <div class="row"><b>권한</b><span class="muted small">Staff</span></div>
-        </div>
-      </div>
-    `;
-  }
+/* =========================
+   CARD / FORM
+========================= */
+.card{
+  background: rgba(255,255,255,.94);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 14px;
+  min-width: 0;
+  max-width: 100%;
+}
 
-  function renderBirthdayCard(visible){
-    if (!visible){
-      els.birthdayCard.innerHTML = "";
-      return;
-    }
-    els.birthdayCard.innerHTML = `
-      <div class="card bdayCard">
-        <div class="bdayHead">
-          <div class="bdayTitle">다가오는 생일</div>
-        </div>
-        <div class="bdayEmpty">표시할 항목이 없습니다</div>
-      </div>
-    `;
-  }
+.sectionTitle,
+.card-title,
+.view h2, .view h3{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-weight: 1100;
+  letter-spacing: -0.2px;
+  color: rgba(0,0,0,.86);
+}
+.sectionTitle::before,
+.card-title::before,
+.view h2::before,
+.view h3::before{
+  content:"";
+  width: 6px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  flex: 0 0 auto;
+  opacity: .95;
+}
 
-  // ---------------------------
-  // Views
-  // ---------------------------
-  function viewDashboard(){
-    // ✅ 대쉬보드: 메일/게시판/결재 + 일정 와이드
-    els.view.innerHTML = `
-      <div class="dashWrap">
+.stack{ display:flex; flex-direction:column; gap:12px; }
+.row{ display:flex; align-items:center; gap:8px; }
+.grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
 
-        <div class="dashGrid">
-          ${dashCard("전자메일", "최근 메일", [
-            { t:"(placeholder) 결재 관련 메일", m:"오늘" },
-            { t:"(placeholder) 공지", m:"어제" },
-          ], "#전자메일/inbox")}
+.btn{
+  border:1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.92);
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor:pointer;
+  font-weight:900;
+  font-size:13px;
+  transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.btn.tiny{ padding: 7px 10px; font-size:12px; border-radius: 12px; }
+.btn.primary{
+  border-color: rgba(240,138,36,.55);
+  background: linear-gradient(180deg, rgba(240,138,36,.95), rgba(240,138,36,.80));
+  color:#fff;
+  box-shadow: 0 12px 26px rgba(240,138,36,.16);
+}
+.muted{ color:var(--muted); }
+.small{ font-size:12px; }
 
-          ${dashCard("게시판", "최근 게시글", [
-            { t:"(placeholder) 공지사항", m:"오늘" },
-            { t:"(placeholder) 자유글", m:"어제" },
-          ], "#게시판/notice")}
+/* =========================
+   DASHBOARD
+   ✅ 구성:
+   - 1행: 전자메일 / 게시판
+   - 2행: 전자결재 / 일정관리(와이드: 2칸)
+========================= */
+.dashWrap{ display:flex; flex-direction:column; gap:14px; }
 
-          ${dashCard("전자결재", "진행 현황", [
-            { t:"(placeholder) 결재 대기", m:"2건" },
-            { t:"(placeholder) 결재 완료", m:"5건" },
-          ], "#전자결재/pending")}
+.dashGrid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:14px;
+}
+.dashCard{ padding: 14px 16px; min-width:0; max-width:100%; }
+.dashSpan2{ grid-column: 1 / -1; }
 
-          ${dashScheduleWide()}
-        </div>
+.dashCardHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom: 10px;
+  min-width:0;
+  flex-wrap: wrap;
+}
+.dashCardTitleLink{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
 
-      </div>
-    `;
-  }
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
 
-  function dashCard(title, sub, items, route){
-    const rows = items.map(x => `
-      <div class="dashItem">
-        <div class="dashItemTitle">${escapeHtml(x.t)}</div>
-        <div class="dashItemMeta">${escapeHtml(x.m)}</div>
-      </div>
-    `).join("");
+  cursor: pointer;
+  font-weight: 1100;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+  color: rgba(0,0,0,.86);
 
-    return `
-      <div class="card dashCard">
-        <div class="dashCardHead">
-          <button class="dashCardTitleLink" type="button" data-route="${route}">${escapeHtml(title)}</button>
-          <div class="dashCardSub">${escapeHtml(sub)}</div>
-        </div>
-        <div class="dashList">${rows}</div>
-      </div>
-    `;
-  }
+  max-width:100%;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.dashCardTitleLink::before{
+  content:"";
+  width: 6px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  flex: 0 0 auto;
+  opacity: .95;
+}
+.dashCardSub{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 900;
+  max-width:100%;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 
-  function dashScheduleWide(){
-    return `
-      <div class="card dashCard dashSpan2">
-        <div class="dashCardHead">
-          <button class="dashCardTitleLink" type="button" data-route="#일정관리/calendar">일정관리</button>
-          <div class="dashCardSub">달력 · 다가오는 휴가/외근</div>
-        </div>
+.dashList{ display:flex; flex-direction:column; gap:10px; }
+.dashItem{
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.92);
+  min-width:0;
+}
+.dashItemTitle,
+.dashItemMeta{
+  min-width:0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashItemTitle{ font-weight: 1000; font-size: 13px; line-height: 1.25; }
+.dashItemMeta{ margin-top: 4px; font-size: 12px; color: var(--muted); font-weight: 900; }
 
-        <div class="schedWide">
-          <div class="schedPanel">
-            <div class="schedTitle">이번 달</div>
-            ${simpleCalendarHtml()}
-          </div>
+/* 일정 와이드 내부 레이아웃 */
+.schedWide{
+  display:grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 14px;
+  min-width:0;
+}
+.schedPanel{
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.92);
+  border-radius: 16px;
+  padding: 12px;
+  min-width:0;
+}
+.schedTitle{
+  font-weight: 1000;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.schedEmpty{
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(0,0,0,.18);
+  background: rgba(255,255,255,.78);
+  color: var(--muted);
+  font-weight: 900;
+  font-size: 13px;
+  text-align: center;
+}
 
-          <div class="schedPanel">
-            <div class="schedTitle">다가오는 휴가/외근</div>
-            <div class="schedEmpty">표시할 일정이 없습니다</div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
+/* CALENDAR (간단 placeholder) */
+.cal-dow{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap:6px;
+  margin: 10px 0 8px;
+  font-weight:1000;
+  font-size:12px;
+  color: var(--muted);
+}
+.cal-grid{ display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+.cal-cell{
+  min-height: 54px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.94);
+  padding: 8px;
+}
+.cal-empty{ background: rgba(255,255,255,.62); }
+.cal-day{ font-weight:1000; font-size:12px; }
 
-  function viewPlaceholder(title){
-    els.view.innerHTML = `
-      <div class="card">
-        <div class="card-title">${escapeHtml(title)}</div>
-        <div class="muted small" style="margin-top:10px">해당 기능은 추후 연결 예정입니다.</div>
-      </div>
-    `;
-  }
+/* TOAST */
+.toastHost{
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 60;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.toastHost .t{
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(0,0,0,.10);
+  border-left: 4px solid var(--accent);
+  padding: 10px 12px;
+  border-radius: 14px;
+  box-shadow: var(--shadow2);
+  font-weight: 900;
+  font-size: 13px;
+}
 
-  function viewWorkShortcut(){
-    els.view.innerHTML = `
-      <div class="card">
-        <div class="card-title">업무관리</div>
-        <div class="muted small" style="margin-top:10px">
-          업무관리 기능은 그룹웨어와 분리되어 별도 창에서 실행됩니다.
-        </div>
-        <div style="margin-top:12px">
-          <button class="btn primary" id="btnOpenApp2" type="button">업무관리 바로가기 (새 창)</button>
-        </div>
-      </div>
-    `;
-    $("#btnOpenApp2").addEventListener("click", openApp2);
-  }
+/* MODAL */
+.modalBackdrop{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 16px;
+  z-index: 80;
+}
+.modal{
+  width: min(860px, 96vw);
+  max-height: 86vh;
+  overflow:auto;
+  background: rgba(255,255,255,.97);
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: 18px;
+  box-shadow: var(--shadow2);
+}
+.modalHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.modalTitle{ font-weight: 1000; }
+.modalBody{ padding: 14px; }
+.modalFoot{
+  padding: 12px 14px;
+  border-top: 1px solid rgba(0,0,0,.06);
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
 
-  function bindDashboardLinks(){
-    // 카드 타이틀 클릭 시 라우트 이동
-    $$(".dashCardTitleLink").forEach(b => {
-      b.addEventListener("click", () => {
-        const r = b.dataset.route;
-        if (r) location.hash = r;
-      });
-    });
-  }
+/* 중간 스크롤 차단 */
+#view,.view,.main,.side{ overflow-y: visible !important; }
+.modal{ overflow: auto !important; }
 
-  // ---------------------------
-  // Routing
-  // ---------------------------
-  function parseHash(){
-    const h = (location.hash || "#대쉬보드/home").replace(/^#/, "");
-    const [tabRaw, pageRaw] = h.split("/");
-    const tab = tabRaw || "대쉬보드";
-    const page = pageRaw || "home";
-    return { tab, page, raw:"#"+h };
-  }
-
-  function resolveTopTab(tab){
-    // 대쉬보드는 별도, 그 외는 TOP_TABS에 존재해야 함
-    if (tab === "대쉬보드") return "대쉬보드";
-    const ok = TOP_TABS.some(t => t.key === tab);
-    return ok ? tab : "대쉬보드";
-  }
-
-  function route(){
-    document.body.classList.add("routeChanging");
-    setTimeout(() => document.body.classList.remove("routeChanging"), 160);
-
-    const { tab, page, raw } = parseHash();
-    const t = resolveTopTab(tab);
-
-    // ✅ birthdayCard: 대쉬보드에서만
-    renderBirthdayCard(t === "대쉬보드");
-
-    if (t === "대쉬보드"){
-      setActiveTopTab("");      // 탭 active 없음
-      renderSideMenu("전자메일"); // 기본 좌측 메뉴(원하면 대쉬보드 전용으로 바꿔도 됨)
-      viewDashboard();
-      bindDashboardLinks();
-      return;
-    }
-
-    // 탭 활성/사이드 구성
-    setActiveTopTab(t);
-    renderSideMenu(t);
-    setActiveSide(raw);
-
-    // 탭별 페이지
-    if (t === "업무관리" && page === "shortcut"){
-      viewWorkShortcut();
-      return;
-    }
-
-    // placeholder pages
-    viewPlaceholder(`${t} / ${page}`);
-  }
-
-  // ---------------------------
-  // 업무관리(별도창) 오픈
-  // ---------------------------
-  function openApp2(){
-    const w = window.open("app2.html", "CONCOST_WORK", "width=1400,height=900");
-    if (!w) toast("팝업이 차단되었습니다. 브라우저에서 팝업 허용 후 다시 시도하세요.");
-  }
-
-  // ---------------------------
-  // Calendar (simple)
-  // ---------------------------
-  function simpleCalendarHtml(){
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth(); // 0-based
-    const first = new Date(y, m, 1);
-    const last = new Date(y, m+1, 0);
-
-    const dow = first.getDay(); // 0 Sun
-    const days = last.getDate();
-
-    const cells = [];
-    for (let i=0; i<dow; i++) cells.push(`<div class="cal-cell cal-empty"></div>`);
-    for (let d=1; d<=days; d++){
-      cells.push(`<div class="cal-cell"><div class="cal-day">${d}</div></div>`);
-    }
-    while (cells.length % 7 !== 0) cells.push(`<div class="cal-cell cal-empty"></div>`);
-
-    return `
-      <div class="cal-dow">
-        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
-      </div>
-      <div class="cal-grid">${cells.join("")}</div>
-    `;
-  }
-
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-  }
-
-  // ---------------------------
-  // Init
-  // ---------------------------
-  function init(){
-    renderTopTabs();
-    renderMegaMenu();
-    renderProfile();
-
-    els.logoHome.addEventListener("click", (e) => {
-      // 로고 클릭 시 대쉬보드
-      e.preventDefault();
-      location.hash = "#대쉬보드/home";
-    });
-
-    window.addEventListener("hashchange", route);
-
-    if (!location.hash) location.hash = "#대쉬보드/home";
-    route();
-  }
-
-  init();
-})();
+/* responsive */
+@media (max-width: 980px){
+  .main{ padding: 12px; }
+  .dashGrid{ grid-template-columns: 1fr; }
+  .dashSpan2{ grid-column: auto; }
+  .schedWide{ grid-template-columns: 1fr; }
+}
