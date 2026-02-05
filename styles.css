@@ -266,7 +266,7 @@ header.topbar .topRight{
   padding: 22px 20px !important;
 
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   gap: 0 !important;
 
   max-height: min(72vh, 720px) !important;
@@ -314,20 +314,25 @@ header.topbar .topRight{
   }
 }
 
-/* ✅ index.html에 5번째(업무관리)나 산출 컬럼이 남아있어도 “숨김” */
-#megaMenu .mega-inner .mega-col:nth-child(5),
+/* ✅ 6번째(산출)만 숨김, 5번째(업무관리)는 표시 */
 #megaMenu .mega-inner .mega-col:nth-child(6){
   display:none !important;
 }
+
 
 /* 반응형 */
 @media (max-width: 1200px){
   #megaMenu .mega-inner{
     grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    width: min(820px, calc(100vw - 60px)) !important;
+    width: min(900px, calc(100vw - 60px)) !important;
   }
-  #megaMenu .mega-col:nth-child(3){ border-left: none !important; }
+  /* 2열 그리드에서 3번째(새 줄 시작)부터는 좌측 보더 제거 */
+  #megaMenu .mega-col:nth-child(3),
+  #megaMenu .mega-col:nth-child(5){
+    border-left: none !important;
+  }
 }
+
 @media (max-width: 760px){
   #megaMenu .mega-inner{
     grid-template-columns: 1fr !important;
