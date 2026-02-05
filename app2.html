@@ -3,78 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>업무관리 (CON COST)</title>
-  <link rel="stylesheet" href="styles2.css?v=2" />
+  <title>업무관리 (Work)</title>
+  <link rel="stylesheet" href="styles2.css" />
 </head>
 <body>
-  <header class="wTop">
-    <div class="wBrand">
-      <div class="wTitle">업무관리</div>
-      <div class="wSub">Work / Approval / Time / Checklist (분리 모듈)</div>
+  <header class="topbar2">
+    <div class="brand2">
+      <div class="title2">업무관리</div>
+      <div class="sub2">업무일지 · 승인 · 프로젝트 소요시간 · 종합 공정관리 · 체크리스트</div>
     </div>
-    <div class="wActions">
-      <button class="wBtn" id="btnBack">그룹웨어로 돌아가기</button>
+    <div class="actions2">
+      <button id="btnClose" class="btn2">창 닫기</button>
     </div>
   </header>
 
-  <div class="wApp">
-    <!-- LEFT NAV -->
-    <aside class="wSide">
-      <div class="wSideSection">
-        <div class="wSideTitle">메뉴</div>
-        <nav id="wMenu" class="wMenu"></nav>
+  <main class="layout2">
+    <aside class="side2">
+      <div class="card2">
+        <div class="card2-title">메뉴</div>
+        <div id="sideMenu2" class="sideMenu2"></div>
+      </div>
+
+      <div class="card2">
+        <div class="card2-title">사용자</div>
+        <div id="profile2" class="muted2">-</div>
       </div>
     </aside>
 
-    <!-- LIST -->
-    <section class="wList">
-      <div class="wListHead">
-        <div class="wListTitle" id="wListTitle">업무일지</div>
-        <button class="wBtn primary" id="btnCreate">+ Create</button>
+    <section class="main2">
+      <div class="card2 head2">
+        <div id="routeTitle2" class="routeTitle2">-</div>
       </div>
-      <div id="wItems" class="wItems"></div>
+
+      <div id="view2" class="view2"></div>
     </section>
+  </main>
 
-    <!-- DETAIL -->
-    <section class="wDetail">
-      <div class="wDetailHead">
-        <div class="wDetailTitle" id="wDetailTitle">상세</div>
-        <div class="wPills">
-          <span class="wPill">Job</span>
-          <span class="wPill">Project</span>
-          <span class="wPill">Deadline</span>
-        </div>
+  <!-- modal (간단) -->
+  <div id="modal2" class="modal2 hidden">
+    <div class="modal2-panel">
+      <div class="modal2-head">
+        <div id="modal2Title" class="modal2-title">-</div>
+        <button id="modal2Close" class="btn2 ghost2">닫기</button>
       </div>
-      <div id="wDetailBody" class="wDetailBody"></div>
-    </section>
-
-    <!-- RIGHT INFO -->
-    <aside class="wRight">
-      <div class="wCard">
-        <div class="wCardTitle">오늘</div>
-        <div class="wWeather">
-          <div class="wTemp">17°C</div>
-          <div class="wSky">Weather (placeholder)</div>
-        </div>
-      </div>
-
-      <div class="wCard">
-        <div class="wCardTitle">태그</div>
-        <div class="wTagRow">
-          <button class="wTag active">Project</button>
-          <button class="wTag">Bills</button>
-          <button class="wTag">Freetime</button>
-          <button class="wTag">Deadline</button>
-        </div>
-      </div>
-
-      <div class="wCard">
-        <div class="wCardTitle">캘린더</div>
-        <div id="wMiniCal" class="wMiniCal"></div>
-      </div>
-    </aside>
+      <div id="modal2Body" class="modal2-body"></div>
+    </div>
   </div>
 
-  <script src="app2.js?v=2"></script>
+  <div id="toast2" class="toast2"></div>
+
+  <script src="app2.js"></script>
 </body>
 </html>
