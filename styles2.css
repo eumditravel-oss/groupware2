@@ -1,251 +1,159 @@
-/* styles2.css (FULL) - Work Window UI (앱2)
-   ✅ 목표: 제공 이미지처럼
-   - 상단 바
-   - 좌측 네비
-   - 중앙 리스트
-   - 중앙 우측 상세
-   - 우측 인포(날씨/태그/캘린더)
-*/
-
 :root{
   --bg:#f4f6f9;
-  --bg2:#eef2f7;
-
   --paper:#ffffff;
   --ink:#1d1d1f;
   --muted:#6b6b73;
-
-  --line: rgba(0,0,0,.10);
-  --softLine: rgba(0,0,0,.06);
-
+  --line: rgba(0,0,0,.08);
   --shadow: 0 10px 26px rgba(0,0,0,.08);
   --radius: 18px;
-
-  --accent:#4f8cff; /* 앱2는 블루 기반(이미지 느낌) */
-  --accent2:#2f6bff;
+  --accent:#3a7afe;
 }
 
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 body{
   margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, "Apple SD Gothic Neo", "Malgun Gothic";
-  color:var(--ink);
-  background:
-    radial-gradient(1000px 520px at 18% -10%, rgba(79,140,255,.18), transparent 60%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial;
+  background: var(--bg);
+  color: var(--ink);
 }
 
-.wTop{
-  height: 56px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding: 0 16px;
-  background: rgba(255,255,255,.92);
-  border-bottom: 1px solid rgba(0,0,0,.08);
-  backdrop-filter: blur(8px);
+.topbar2{
   position: sticky;
   top:0;
-  z-index:10;
-}
-.wBrand{ display:flex; flex-direction:column; gap:2px; }
-.wTitle{ font-weight: 1000; letter-spacing:-0.2px; }
-.wSub{ font-size: 12px; color: var(--muted); font-weight: 800; }
-
-.wActions{ display:flex; gap:10px; }
-
-.wBtn{
-  border:1px solid rgba(0,0,0,.10);
-  background: rgba(255,255,255,.92);
-  border-radius: 14px;
-  padding: 9px 12px;
-  cursor:pointer;
-  font-weight:900;
-  font-size:13px;
-}
-.wBtn.primary{
-  border-color: rgba(79,140,255,.50);
-  background: linear-gradient(180deg, rgba(79,140,255,.95), rgba(47,107,255,.85));
-  color:#fff;
-  box-shadow: 0 12px 26px rgba(79,140,255,.20);
+  z-index: 50;
+  height: 64px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 0 18px;
+  background: rgba(255,255,255,.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
 }
 
-.wApp{
-  height: calc(100vh - 56px);
+.title2{ font-weight: 1000; letter-spacing:-0.2px; }
+.sub2{ font-size:12px; color: var(--muted); margin-top:2px; }
+.brand2{ display:flex; flex-direction:column; }
+
+.layout2{
+  max-width: 1280px;
+  margin: 16px auto;
+  padding: 0 16px 24px;
   display:grid;
-  grid-template-columns: 260px 360px 1fr 320px;
-  gap: 14px;
-  padding: 14px;
-  min-width: 1200px; /* 필요 시 가로 스크롤 */
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
 }
 
-.wSide, .wList, .wDetail, .wRight{
-  background: rgba(255,255,255,.86);
-  border: 1px solid rgba(0,0,0,.06);
+.card2{
+  background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  min-width: 0;
-  overflow: hidden;
 }
 
-/* LEFT */
-.wSide{ padding: 12px; }
-.wSideTitle{ font-weight:1000; font-size:13px; margin-bottom: 10px; }
-.wMenu{ display:flex; flex-direction:column; gap:8px; }
-
-.wMenuBtn{
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid transparent;
-  background: rgba(255,255,255,.88);
-  cursor:pointer;
-
-  font-weight: 950;
-  color: rgba(0,0,0,.84);
-}
-.wMenuBtn.active{
-  border-color: rgba(79,140,255,.35);
-  background: rgba(79,140,255,.12);
-}
-.wMenuHint{
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 900;
+.card2-title{
+  padding: 12px 14px;
+  font-weight: 1000;
+  border-bottom: 1px solid var(--line);
 }
 
-/* LIST */
-.wList{ display:flex; flex-direction:column; }
-.wListHead{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding: 12px 12px;
-  border-bottom: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.92);
+.head2{
+  padding: 12px 14px;
 }
-.wListTitle{ font-weight: 1000; }
-.wItems{
-  padding: 10px;
+
+.routeTitle2{
+  font-weight: 1100;
+}
+
+.sideMenu2{
   display:flex;
   flex-direction:column;
-  gap:10px;
-  overflow:auto;
-  height: 100%;
+  padding: 10px;
+  gap: 8px;
 }
-.wItem{
-  border: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.92);
-  border-radius: 16px;
+
+.sideItem2{
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.02);
+  border-radius: 12px;
   padding: 10px 12px;
   cursor:pointer;
-}
-.wItem.active{
-  border-color: rgba(79,140,255,.35);
-  background: rgba(79,140,255,.10);
-}
-.wItemTop{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.wItemTitle{ font-weight: 1000; font-size: 13px; }
-.wItemMeta{ font-size: 12px; color: var(--muted); font-weight: 900; margin-top: 6px; }
-
-/* DETAIL */
-.wDetail{ display:flex; flex-direction:column; }
-.wDetailHead{
-  padding: 12px 12px;
-  border-bottom: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.92);
-}
-.wDetailTitle{ font-weight:1000; margin-bottom: 8px; }
-.wPills{ display:flex; gap:8px; flex-wrap:wrap; }
-.wPill{
-  font-size: 11px;
+  text-align:left;
   font-weight: 900;
-  color: rgba(0,0,0,.70);
-  border: 1px solid rgba(0,0,0,.10);
-  background: rgba(255,255,255,.92);
-  padding: 5px 9px;
-  border-radius: 999px;
 }
-.wDetailBody{
-  padding: 12px;
-  overflow:auto;
-  height: 100%;
+.sideItem2.active{
+  border-color: rgba(58,122,254,.35);
+  box-shadow: 0 0 0 3px rgba(58,122,254,.12);
 }
-.wBlock{
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.06);
-  border-radius: 16px;
-  padding: 12px;
-}
-.wBlockTitle{ font-weight:1000; margin-bottom: 8px; }
-.wText{ color: rgba(0,0,0,.72); font-weight: 800; line-height: 1.55; }
 
-/* RIGHT */
-.wRight{
+.view2{
   display:flex;
   flex-direction:column;
   gap: 12px;
-  padding: 12px;
-  overflow:auto;
-}
-.wCard{
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.06);
-  border-radius: 16px;
-  padding: 12px;
-}
-.wCardTitle{ font-weight:1000; margin-bottom: 10px; }
-.wWeather{ display:flex; flex-direction:column; gap:2px; }
-.wTemp{ font-size: 26px; font-weight: 1000; }
-.wSky{ color: var(--muted); font-weight: 900; font-size: 12px; }
-
-.wTagRow{ display:flex; flex-wrap:wrap; gap:8px; }
-.wTag{
-  border: 1px solid rgba(0,0,0,.10);
-  background: rgba(255,255,255,.92);
-  border-radius: 999px;
-  padding: 6px 10px;
-  cursor:pointer;
-  font-weight: 900;
-  font-size: 12px;
-}
-.wTag.active{
-  border-color: rgba(79,140,255,.40);
-  background: rgba(79,140,255,.12);
-  color: rgba(0,0,0,.86);
+  padding: 12px 0 0;
 }
 
-.wMiniCal{
-  display:grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-.wCalCell{
-  min-height: 34px;
+.btn2{
+  border: 1px solid var(--line);
+  background: var(--paper);
   border-radius: 12px;
-  border: 1px solid rgba(0,0,0,.06);
-  background: rgba(255,255,255,.94);
-  display:flex;
-  align-items:flex-start;
-  justify-content:flex-start;
-  padding: 6px;
-  font-weight: 900;
-  font-size: 12px;
-  color: rgba(0,0,0,.80);
+  padding: 10px 12px;
+  font-weight: 1000;
+  cursor:pointer;
 }
-.wCalCell.empty{
-  background: rgba(255,255,255,.62);
-  color: rgba(0,0,0,.30);
+.btn2.primary2{
+  background: var(--accent);
+  color:#fff;
+  border-color: rgba(0,0,0,.0);
+}
+.btn2.ghost2{
+  background: rgba(0,0,0,.03);
+}
+
+.muted2{ color: var(--muted); font-size: 12px; padding: 12px 14px; }
+
+.modal2{
+  position: fixed;
+  inset:0;
+  background: rgba(0,0,0,.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 16px;
+}
+.modal2.hidden{ display:none; }
+.modal2-panel{
+  width: min(920px, 100%);
+  background: var(--paper);
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 52px rgba(0,0,0,.25);
+  overflow:hidden;
+}
+.modal2-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.modal2-body{ padding: 14px; max-height: 70vh; overflow:auto; }
+
+.toast2{
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  z-index: 100;
+}
+.toast2 .t{
+  background: rgba(0,0,0,.78);
+  color:#fff;
+  padding: 10px 12px;
+  border-radius: 12px;
+  max-width: 360px;
+  font-weight: 900;
 }
