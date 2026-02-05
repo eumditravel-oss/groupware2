@@ -1,6 +1,7 @@
-/* styles.css (FULL) - Groupware Main (탭: 전자메일/게시판/전자결재/일정관리/업무관리)
-   ✅ 유지: 산출 제거 / 대쉬보드 4분할(일정 와이드) / sticky topbar / mega menu 5컬럼
-   ✅ 추가: profileCard/birthdayCard 기본 카드가 “확실히 보이도록” 최소 스타일 보강
+/* styles.css (FULL) - Groupware Main (탭: 전자메일/게시판/전자결재/일정관리/산출)
+   ✅ 적용 규칙(app.js와 동일): “산출” 탭/항목은 모두 제외, 업무관리 탭도 제외(뷰/메뉴 노출 금지)
+   ✅ 유지: 대쉬보드 4분할(일정 와이드) / sticky topbar / mega menu 4컬럼(산출 컬럼은 index.html에 있어도 숨김)
+   ✅ 추가: profileCard/birthdayCard 기본 카드 최소 스타일 보강
 */
 
 /* =========================
@@ -254,9 +255,9 @@ header.topbar .topRight{
   transform: translate(-50%, 0) !important;
 }
 
-/* 5컬럼 */
+/* ✅ 4컬럼(전자메일/게시판/전자결재/일정관리) 기준 */
 #megaMenu .mega-inner{
-  width: min(1080px, calc(110vw - 380px)) !important;
+  width: min(980px, calc(110vw - 380px)) !important;
   background: rgba(255,255,255,.98) !important;
   border: 1px solid rgba(0,0,0,.10) !important;
   border-radius: 18px !important;
@@ -265,7 +266,7 @@ header.topbar .topRight{
   padding: 22px 20px !important;
 
   display: grid !important;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 0 !important;
 
   max-height: min(72vh, 720px) !important;
@@ -313,21 +314,26 @@ header.topbar .topRight{
   }
 }
 
+/* ✅ index.html에 5번째(업무관리)나 산출 컬럼이 남아있어도 “숨김” */
+#megaMenu .mega-inner .mega-col:nth-child(5),
+#megaMenu .mega-inner .mega-col:nth-child(6){
+  display:none !important;
+}
+
 /* 반응형 */
 @media (max-width: 1200px){
   #megaMenu .mega-inner{
-    grid-template-columns: repeat(3, minmax(0,1fr)) !important;
-    width: min(980px, calc(100vw - 60px)) !important;
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    width: min(820px, calc(100vw - 60px)) !important;
   }
-  #megaMenu .mega-col:nth-child(4){ border-left: none !important; }
+  #megaMenu .mega-col:nth-child(3){ border-left: none !important; }
 }
 @media (max-width: 760px){
   #megaMenu .mega-inner{
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    grid-template-columns: 1fr !important;
     width: min(720px, calc(100vw - 40px)) !important;
   }
-  #megaMenu .mega-col:nth-child(3),
-  #megaMenu .mega-col:nth-child(5){ border-left: none !important; }
+  #megaMenu .mega-col{ border-left: none !important; }
 }
 
 /* =========================
@@ -482,7 +488,7 @@ header.topbar .topRight{
 .muted{ color:var(--muted); }
 .small{ font-size:12px; }
 
-/* ✅ profileCard/birthdayCard 최소 보강(안보이는 이슈 방지용) */
+/* ✅ profileCard/birthdayCard 최소 보강 */
 .profileCard, .bdayCard{ min-width: 0; }
 .bdayHead{ display:flex; align-items:center; justify-content:space-between; }
 .bdayTitle{ font-weight:1100; }
