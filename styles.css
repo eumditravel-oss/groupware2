@@ -424,28 +424,39 @@ header.topbar .topRight{
   border-radius: 999px;
   background: var(--accent);
 }
-/* ✅ 선택된 좌측 메뉴: 주황 띠(강화) */
-#sideMenu .side-item{
-  position: relative;
+/* ✅ 좌측 메뉴 active 주황띠: DOM 구조 상관없이 강제 표시 */
+.sideNav .side-item,
+#sideMenu .side-item,
+.sideNav button.side-item{
+  position: relative !important;
+  overflow: visible !important;
 }
 
-#sideMenu .side-item.active{
-  background: rgba(255,255,255,.95);
-  border-color: rgba(0,0,0,.10);
-}
-
+/* 왼쪽 띠 */
+.sideNav .side-item.active::before,
 #sideMenu .side-item.active::before{
-  content:"";
-  position:absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 6px 14px rgba(240,138,36,.22);
+  content:"" !important;
+  position:absolute !important;
+  left: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+
+  width: 4px !important;
+  height: 22px !important;
+  border-radius: 999px !important;
+  background: var(--accent) !important;
+
+  z-index: 3 !important;
+  pointer-events: none !important;
+  box-shadow: 0 6px 14px rgba(240,138,36,.22) !important;
 }
+
+/* active일 때 버튼 패딩을 살짝 밀어 띠가 더 “보이게” */
+.sideNav .side-item.active,
+#sideMenu .side-item.active{
+  padding-left: 20px !important; /* 기존 14px/16px 정도면 20px로 */
+}
+
 
 
 .main{
