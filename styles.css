@@ -257,7 +257,7 @@ header.topbar .topRight{
 
 /* ✅ 4컬럼(전자메일/게시판/전자결재/일정관리) 기준 */
 #megaMenu .mega-inner{
-  width: min(1150px, calc(100vw - 380px)) !important;
+  width: min(1150px, calc(80vw - 380px)) !important;
   background: rgba(255,255,255,.98) !important;
   border: 1px solid rgba(0,0,0,.10) !important;
   border-radius: 18px !important;
