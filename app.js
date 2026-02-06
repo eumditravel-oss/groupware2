@@ -1071,7 +1071,11 @@ function viewSchedule(db, sub){
       renderSideMenu("대쉬보드"); // 비움
       setActiveSide("");
       viewDashboard(db);
-      if (els.badgePending) els.badgePending.textContent = String((db.approvals||[]).filter(x=>x.box==="inbox").length);
+      if (els.badgePending){
+  els.badgePending.textContent = "";
+  els.badgePending.classList.add("hidden");
+}
+
       return;
     }
 
