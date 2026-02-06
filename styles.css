@@ -852,3 +852,9 @@ header.topbar .topRight{
   .schedWide{ grid-template-columns: 1fr; }
   .bdayGrid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
+
+/* ❌ 대쉬보드 상단에 떠있는 단독 숫자 제거 */
+.view > :first-child:not(.card):not(.dashWrap){
+  display: none !important;
+}
+
