@@ -546,6 +546,32 @@ header.topbar .topRight{
   gap:10px;
   color: rgba(0,0,0,.55);
 }
+/* ✅ 프로필 이미지 엑박/alt("profile") 표시 제거 */
+#avatarPreview:not([src]),
+#avatarPreview[src=""],
+#avatarPreview[src="about:blank"]{
+  display: none !important;
+}
+
+/* ✅ placeholder 정렬(치우침 방지) */
+.avatar-placeholder{
+  text-align: center;
+  padding: 0 10px;
+}
+
+.avatar-text{
+  text-align: center;
+  line-height: 1.2;
+  width: 100%;
+}
+
+/* (안전) avatar 내부는 항상 정중앙 */
+.avatar{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .avatar-icon{
   width: 56px;
   height: 56px;
