@@ -390,9 +390,13 @@
 
   const SIDE_MENUS = {
     "전자메일": [
-  { key:"mail-inbox", label:"받은편지함", route:"#전자메일/mail-inbox" },
-  { key:"mail-sent",  label:"보낸편지함", route:"#전자메일/mail-sent" }
+  { key:"mail-inbox",     label:"받은편지함",       route:"#전자메일/mail-inbox" },
+  { key:"mail-sent",      label:"보낸편지함",       route:"#전자메일/mail-sent" },
+  { key:"mail-draft",     label:"임시보관함",       route:"#전자메일/mail-draft" },
+  { key:"mail-scheduled", label:"예약메세지보기",   route:"#전자메일/mail-scheduled" },
+  { key:"mail-starred",   label:"중요편지함",       route:"#전자메일/mail-starred" },
 ],
+
 
     "게시판": [
   { key:"ceo",      label:"CEO Message", route:"#게시판/ceo" },
@@ -542,11 +546,14 @@
   }
 
   function setActiveSide(route){
-    if (!els.sideMenu) return;
-    $$("#sideMenu .side-item").forEach(b => {
-      b.classList.toggle("active", b.dataset.route === route);
-    });
-  }
+  if (!els.sideMenu) return;
+  const r = decodeURIComponent(String(route || ""));
+  $$("#sideMenu .side-item").forEach(b => {
+    const br = decodeURIComponent(String(b.dataset.route || ""));
+    b.classList.toggle("active", br === r);
+  });
+}
+
 
   /***********************
    * Profile (v0.5 확장)
@@ -836,106 +843,237 @@
   if (!els.view) return;
   els.view.innerHTML = "";
 
-  const box = (sub === "mail-sent") ? "sent" : "inbox";
-  const title = "메일 목록";
-  const subtitle = (box === "inbox") ? "받은편지함" : "보낸편지함";
-  setRouteTitle(`전자메일 · ${subtitle}`);
+  // 라우트별 박스
+  const boxBySub = {
+    "mail-inbox": "inbox",
+    "mail-sent": "sent",
+    "mail-draft": "draft",
+    "mail-scheduled": "scheduled",
+    "mail-starred": "starred",
+  };
+  const labelBySub = {
+    "mail-inbox": "받은편지함",
+    "mail-sent": "보낸편지함",
+    "mail-draft": "임시보관함",
+    "mail-scheduled": "예약메세지보기",
+    "mail-starred": "중요편지함",
+  };
 
+  const box = boxBySub[sub] || "inbox";
+  const folderTitle = labelBySub[sub] || "받은편지함";
+  setRouteTitle(`전자메일 · ${folderTitle}`);
+
+  // 데이터 (더미는 그대로 사용)
   const all = (db.mails || [])
-    .filter(m => m.box === box)
+    .filter(m => String(m.box||"") === String(box))
     .slice()
     .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
 
-  // --- UI DOM ---
-  const wrap = dom(`<div class="mailWrap"></div>`);
+  // 상태(별/체크) : 로컬 UI 상태만
+  const mailUIKey = "CONCOST_MAIL_UI_V1";
+  const ui = safeParse(localStorage.getItem(mailUIKey) || "{}", {});
+  if (!ui.star) ui.star = {};
+  if (!ui.check) ui.check = {};
+  function saveUI(){ localStorage.setItem(mailUIKey, JSON.stringify(ui)); }
 
-  const head = dom(`
-    <div class="mailHead card">
-      <div class="mailHeadLeft">
-        <div class="mailHeadTitle">${escapeHtml(title)}</div>
+  // 상단 카테고리 탭: 기본/체크리스트/납품메일 (UI만)
+  const catTabs = [
+    { key:"basic", label:"기본" },
+    { key:"checklist", label:"체크리스트" },
+    { key:"deliver", label:"납품메일" },
+  ];
+  ui.cat = ui.cat || "basic";
+
+  // --- 레이아웃 ---
+  const layout = dom(`
+    <div class="mailG">
+      <div class="mailGTop card">
+        <div class="mailGTopLeft">
+          <button class="btn tiny mailGIcon" type="button" title="새 메일">✎</button>
+          <button class="btn tiny mailGIcon" type="button" title="새로고침">⟳</button>
+        </div>
+
+        <div class="mailGTopMid">
+          <div class="mailGTabs" id="mailGTabs"></div>
+        </div>
+
+        <div class="mailGTopRight">
+          <input class="mailGSearch" id="mailGSearch" placeholder="메일 검색" />
+          <div class="mailGCount" id="mailGCount"></div>
+        </div>
       </div>
 
-      <div class="mailHeadRight">
-        <select class="select mailSelect" id="mailField">
-          <option value="subject">편지제목</option>
-          <option value="from">보낸사람</option>
-        </select>
+      <div class="mailGBody">
+        <div class="mailGList card">
+          <div class="mailGListHead">
+            <label class="mailGChkAll">
+              <input type="checkbox" id="mailChkAll">
+              <span></span>
+            </label>
+          </div>
 
-        <input class="mailInput" id="mailQuery" placeholder="검색어 입력" />
-
-        <button class="btn" id="mailSearchBtn" type="button">찾기</button>
-        <button class="btn" id="mailResetBtn" type="button">초기화</button>
-
-        <div class="mailCount" id="mailCount"></div>
+          <div class="mailGRows" id="mailGRows"></div>
+        </div>
       </div>
     </div>
   `);
 
-  const listCard = dom(`
-    <div class="mailListCard card">
-      <div class="mailList"></div>
-    </div>
-  `);
+  els.view.appendChild(layout);
 
-  const listEl = $(".mailList", listCard);
-  const fieldEl = $("#mailField", head);
-  const queryEl = $("#mailQuery", head);
-  const countEl = $("#mailCount", head);
+  const tabsHost = byId("mailGTabs");
+  const rowsHost = byId("mailGRows");
+  const qEl = byId("mailGSearch");
+  const countEl = byId("mailGCount");
+  const chkAll = byId("mailChkAll");
 
-  function renderList(items){
-    if (!listEl) return;
+  // 탭 렌더
+  function renderTabs(){
+    if (!tabsHost) return;
+    tabsHost.innerHTML = "";
+    catTabs.forEach(t=>{
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "mailGTab" + (ui.cat === t.key ? " active" : "");
+      b.textContent = t.label;
+      b.addEventListener("click", ()=>{
+        ui.cat = t.key;
+        saveUI();
+        renderTabs();
+        applyFilter();
+      });
+      tabsHost.appendChild(b);
+    });
+  }
 
-    if (countEl) countEl.textContent = `${items.length}건`;
-    listEl.innerHTML = "";
+  // row 렌더 (체크박스/별/발신자/제목/날짜)
+  function rowEl(m){
+    const id = m.mailId || "";
+    const isStar = !!ui.star[id];
+    const isChecked = !!ui.check[id];
+
+    const row = dom(`
+      <div class="mailGRow" data-id="${escapeHtml(id)}">
+        <div class="mailGCol mailGColChk">
+          <label class="mailGChk">
+            <input type="checkbox" ${isChecked ? "checked" : ""}>
+            <span></span>
+          </label>
+        </div>
+
+        <div class="mailGCol mailGColStar" title="중요">
+          <button class="mailGStar ${isStar ? "on" : ""}" type="button" aria-label="star">★</button>
+        </div>
+
+        <div class="mailGCol mailGColFrom">
+          <div class="mailGFrom">${escapeHtml(m.from || "-")}</div>
+        </div>
+
+        <div class="mailGCol mailGColSubject">
+          <div class="mailGSubject">${escapeHtml(m.subject || "")}</div>
+        </div>
+
+        <div class="mailGCol mailGColAt">
+          <div class="mailGAt">${escapeHtml(m.at || "-")}</div>
+        </div>
+      </div>
+    `);
+
+    // 체크
+    const cb = row.querySelector('input[type="checkbox"]');
+    if (cb){
+      cb.addEventListener("change", ()=>{
+        ui.check[id] = cb.checked;
+        saveUI();
+        syncChkAll();
+      });
+    }
+
+    // 별
+    const starBtn = row.querySelector(".mailGStar");
+    if (starBtn){
+      starBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        ui.star[id] = !ui.star[id];
+        saveUI();
+        starBtn.classList.toggle("on", !!ui.star[id]);
+        // 중요편지함이면 즉시 반영
+        if (box === "starred") applyFilter();
+      });
+    }
+
+    return row;
+  }
+
+  function renderRows(items){
+    if (!rowsHost) return;
+    rowsHost.innerHTML = "";
+    if (countEl) countEl.textContent = `${items.length}개`;
 
     if (!items.length){
-      listEl.appendChild(dom(`<div class="empty">메일이 없습니다.</div>`));
+      rowsHost.appendChild(dom(`<div class="mailGEmpty">메일이 없습니다.</div>`));
+      if (chkAll) chkAll.checked = false;
       return;
     }
 
-    items.forEach(m=>{
-      const row = dom(`
-        <div class="mailRow">
-          <div class="mailRowTitle">${escapeHtml(m.subject || "")}</div>
-          <div class="mailRowMeta">${escapeHtml(`${m.from || "-"} · ${m.at || "-"}`)}</div>
-        </div>
-      `);
-      listEl.appendChild(row);
+    items.forEach(m => rowsHost.appendChild(rowEl(m)));
+    syncChkAll();
+  }
+
+  function syncChkAll(){
+    if (!chkAll) return;
+    const ids = (filteredCache || []).map(m => m.mailId).filter(Boolean);
+    if (!ids.length){ chkAll.checked = false; return; }
+    chkAll.checked = ids.every(id => !!ui.check[id]);
+  }
+
+  let filteredCache = [];
+
+  // 필터: (1) 검색 (2) 중요편지함이면 star true만
+  // 카테고리 탭은 지금은 UI만(필요 시 나중에 subject prefix 등으로 분류 로직 추가)
+  function applyFilter(){
+    const q = (qEl ? qEl.value : "").trim().toLowerCase();
+
+    let items = all.slice();
+
+    // 중요편지함이면 star만
+    if (box === "starred"){
+      items = items.filter(m => !!ui.star[m.mailId]);
+    }
+
+    if (q){
+      items = items.filter(m=>{
+        const s = `${m.from||""} ${m.subject||""} ${m.at||""}`.toLowerCase();
+        return s.includes(q);
+      });
+    }
+
+    filteredCache = items;
+    renderRows(items);
+  }
+
+  if (qEl){
+    qEl.addEventListener("keydown", (e)=>{
+      if (e.key === "Enter") applyFilter();
+    });
+    qEl.addEventListener("input", ()=>{
+      // 실시간 필터
+      applyFilter();
     });
   }
 
-  function applySearch(){
-    const field = fieldEl ? fieldEl.value : "subject";
-    const q = (queryEl ? queryEl.value : "").trim().toLowerCase();
-    if (!q) return renderList(all);
-
-    const filtered = all.filter(m=>{
-      const v = String(m[field] || "").toLowerCase();
-      return v.includes(q);
-    });
-    renderList(filtered);
-  }
-
-  const searchBtn = $("#mailSearchBtn", head);
-  const resetBtn  = $("#mailResetBtn", head);
-
-  if (searchBtn) searchBtn.addEventListener("click", applySearch);
-  if (resetBtn) resetBtn.addEventListener("click", ()=>{
-    if (queryEl) queryEl.value = "";
-    renderList(all);
-  });
-  if (queryEl){
-    queryEl.addEventListener("keydown", (e)=>{
-      if (e.key === "Enter") applySearch();
+  if (chkAll){
+    chkAll.addEventListener("change", ()=>{
+      const ids = (filteredCache || []).map(m => m.mailId).filter(Boolean);
+      ids.forEach(id => ui.check[id] = chkAll.checked);
+      saveUI();
+      applyFilter(); // UI 리프레시
     });
   }
 
-  wrap.appendChild(head);
-  wrap.appendChild(listCard);
-  els.view.appendChild(wrap);
-
-  renderList(all);
+  renderTabs();
+  applyFilter();
 }
+
 
 
 function viewBoard(db, sub){
