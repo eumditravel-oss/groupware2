@@ -255,9 +255,11 @@ header.topbar .topRight{
   transform: translate(-50%, 0) !important;
 }
 
-/* ✅ 4컬럼(전자메일/게시판/전자결재/일정관리) 기준 */
+/* ✅ 5컬럼(전자메일/게시판/전자결재/일정관리/업무관리) 기준 */
 #megaMenu .mega-inner{
+  /* ✅ 여기서 폭 늘립니다 */
   width: min(1100px, calc(90vw - 380px)) !important;
+
   background: rgba(255,255,255,.98) !important;
   border: 1px solid rgba(0,0,0,.10) !important;
   border-radius: 18px !important;
@@ -319,14 +321,12 @@ header.topbar .topRight{
   display:none !important;
 }
 
-
 /* 반응형 */
 @media (max-width: 1200px){
   #megaMenu .mega-inner{
     grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    width: min(900px, calc(100vw - 60px)) !important;
+    width: min(980px, calc(100vw - 60px)) !important;
   }
-  /* 2열 그리드에서 3번째(새 줄 시작)부터는 좌측 보더 제거 */
   #megaMenu .mega-col:nth-child(3),
   #megaMenu .mega-col:nth-child(5){
     border-left: none !important;
@@ -359,6 +359,15 @@ header.topbar .topRight{
   border-right: 1px solid rgba(0,0,0,.06);
   background: rgba(255,255,255,.62);
   overflow: visible;
+}
+
+/* ✅ 사이드에 중복 로고가 있으면 숨김 (topbar 로고는 유지) */
+.side .logoImg{ display:none !important; }
+.side img[alt*="CON"],
+.side img[src*="logo"]{
+  max-width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 .sideNav{
@@ -493,10 +502,139 @@ header.topbar .topRight{
 .muted{ color:var(--muted); }
 .small{ font-size:12px; }
 
-/* ✅ profileCard/birthdayCard 최소 보강 */
+/* ✅ profileCard/birthdayCard 최소 보강 (강화판) */
 .profileCard, .bdayCard{ min-width: 0; }
+
+/* 프로필 카드 레이아웃 */
+.profileCard.card{
+  padding: 14px 14px;
+}
+.profileTop{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 8px 0 12px;
+}
+.avatar{
+  width: 100%;
+  max-width: 210px;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 10px 22px rgba(0,0,0,.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+#avatarPreview{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
+}
+.avatar-placeholder{
+  width: 100%;
+  height: 100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  color: rgba(0,0,0,.55);
+}
+.avatar-icon{
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(255,255,255,.92);
+  font-size: 26px;
+}
+.avatar-text{
+  font-weight: 1000;
+  font-size: 13px;
+  color: rgba(0,0,0,.55);
+}
+
+/* 프로필 본문 */
+.profileBody{
+  margin-top: 10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.profileRow{
+  display:grid;
+  grid-template-columns: 56px 1fr;
+  gap:10px;
+  align-items:center;
+}
+.profileKey{
+  font-size: 12px;
+  font-weight: 1000;
+  color: var(--muted);
+}
+.profileVal{
+  font-weight: 950;
+  font-size: 13px;
+  color: rgba(0,0,0,.82);
+}
+.select.profileSelect{
+  width: 100%;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.92);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-weight: 950;
+}
+
+/* 생일 카드 */
 .bdayHead{ display:flex; align-items:center; justify-content:space-between; }
 .bdayTitle{ font-weight:1100; }
+.bdayGrid{
+  margin-top: 10px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+.bdayItem{
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.92);
+  border-radius: 16px;
+  padding: 10px 10px;
+  text-align:center;
+}
+.bdayAvatar{
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  margin: 0 auto 8px;
+  border: 1px solid rgba(0,0,0,.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(255,255,255,.95);
+}
+.bdayName{
+  font-weight: 1000;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+}
+.bdayDate{
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--muted);
+}
 .bdayEmpty{
   margin-top: 10px;
   padding: 12px;
@@ -712,4 +850,5 @@ header.topbar .topRight{
   .dashGrid{ grid-template-columns: 1fr; }
   .dashSpan2{ grid-column: auto; }
   .schedWide{ grid-template-columns: 1fr; }
+  .bdayGrid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
