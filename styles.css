@@ -425,41 +425,39 @@ header.topbar .topRight{
   background: var(--accent);
 }
 /* =========================
-   Side Menu Active Accent (주황 띠)
+   Side Menu Active Accent (강화판)
    ========================= */
 
-/* 좌측 메뉴 버튼 기본 */
-#sideMenu .side-item{
-  position: relative;
-  padding-left: 18px; /* 주황 띠 자리 확보 */
+/* active 배경도 조금 더 확실하게 */
+#sideMenu .side-item.active{
+  background: rgba(255,255,255,.96) !important;
+  border-color: rgba(240,138,36,.28) !important;
+  box-shadow: 0 12px 22px rgba(0,0,0,.07) !important;
 }
 
-/* 활성(선택)된 메뉴: 주황 세로 띠 */
+/* 주황 띠: 더 진하게/선명하게 + 항상 표시 */
 #sideMenu .side-item.active::before{
-  content:"";
-  position:absolute;
-  left: 10px;              /* 띠 위치(필요시 8~12px 조정) */
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;              /* 띠 두께 */
-  height: 28px;            /* 띠 길이 */
-  border-radius: 999px;    /* pill 모양 */
-  background: var(--accent, #f08a24);
-  box-shadow: 0 10px 22px rgba(240,138,36,.35);
+  content:"" !important;
+  position:absolute !important;
+  left: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+
+  width: 7px !important;     /* 더 두껍게 */
+  height: 30px !important;   /* 더 길게 */
+  border-radius: 999px !important;
+
+  background: var(--accent) !important;
+  box-shadow: 0 14px 26px rgba(240,138,36,.45) !important;
 }
 
-/* (선택) 호버 시에도 살짝 띠 힌트 */
+/* hover 힌트는 유지하되, active를 절대 덮지 않게 */
 #sideMenu .side-item:not(.active):hover::before{
-  content:"";
-  position:absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 22px;
-  border-radius: 999px;
-  background: rgba(240,138,36,.28);
+  width: 7px;
+  height: 24px;
+  background: rgba(240,138,36,.35);
 }
+
 
 
 
