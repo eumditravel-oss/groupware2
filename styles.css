@@ -424,6 +424,29 @@ header.topbar .topRight{
   border-radius: 999px;
   background: var(--accent);
 }
+/* ✅ 선택된 좌측 메뉴: 주황 띠(강화) */
+#sideMenu .side-item{
+  position: relative;
+}
+
+#sideMenu .side-item.active{
+  background: rgba(255,255,255,.95);
+  border-color: rgba(0,0,0,.10);
+}
+
+#sideMenu .side-item.active::before{
+  content:"";
+  position:absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 6px 14px rgba(240,138,36,.22);
+}
+
 
 .main{
   flex:1;
