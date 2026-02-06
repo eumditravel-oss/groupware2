@@ -826,95 +826,107 @@
   if (!els.view) return;
   els.view.innerHTML = "";
 
-  const box = (sub === "mail-sent") ? "sent" : "inbox"; // ✅ etc 제거
-  const title = `전자메일 · ${box === "inbox" ? "받은편지함" : "보낸편지함"}`;
-  setRouteTitle(title);
+  const box = (sub === "mail-sent") ? "sent" : "inbox";
+  const title = "메일 목록";
+  const subtitle = (box === "inbox") ? "받은편지함" : "보낸편지함";
+  setRouteTitle(`전자메일 · ${subtitle}`);
 
-  // ✅ 혹시 과거 DB에 etc가 남아있으면 inbox로 흡수(안전)
-  const all = (db.mails || []).map(m => {
-    const b = String(m.box || "inbox");
-    return { ...m, box: (b === "etc") ? "inbox" : b };
-  });
-
-  const inboxCount = all.filter(m => m.box === "inbox").length;
-  const sentCount  = all.filter(m => m.box === "sent").length;
-
-  const items = all
+  const all = (db.mails || [])
     .filter(m => m.box === box)
     .slice()
-    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
-    .slice(0, 200);
+    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
 
-  const wrap = dom(`
-    <div class="mailLayout">
-      <aside class="mailSide card">
-        <div class="mailSideTitle">전자메일</div>
+  // --- UI DOM ---
+  const wrap = dom(`<div class="mailWrap"></div>`);
 
-        <button class="mailFolder ${box==="inbox"?"active":""}" type="button" data-route="#전자메일/mail-inbox">
-          <span class="txt">받은편지함</span>
-          <span class="cnt">${inboxCount}</span>
-        </button>
+  const head = dom(`
+    <div class="mailHead card">
+      <div class="mailHeadLeft">
+        <div class="mailHeadTitle">${escapeHtml(title)}</div>
+      </div>
 
-        <button class="mailFolder ${box==="sent"?"active":""}" type="button" data-route="#전자메일/mail-sent">
-          <span class="txt">보낸편지함</span>
-          <span class="cnt">${sentCount}</span>
-        </button>
-      </aside>
+      <div class="mailHeadRight">
+        <select class="select mailSelect" id="mailField">
+          <option value="subject">편지제목</option>
+          <option value="from">보낸사람</option>
+        </select>
 
-      <section class="mailMain card">
-        <div class="mailHead">
-          <div class="mailHeadTitle">${escapeHtml(title)}</div>
-          <div class="mailHeadRight">
-            <input class="mailSearch" id="mailSearch" type="search" placeholder="검색(제목/보낸사람)" />
-          </div>
-        </div>
+        <input class="mailInput" id="mailQuery" placeholder="검색어 입력" />
 
-        <div class="list mailList" id="mailList"></div>
-      </section>
+        <button class="btn" id="mailSearchBtn" type="button">찾기</button>
+        <button class="btn" id="mailResetBtn" type="button">초기화</button>
+
+        <div class="mailCount" id="mailCount"></div>
+      </div>
     </div>
   `);
 
-  // 폴더 클릭
-  $$(".mailFolder", wrap).forEach(b=>{
-    b.addEventListener("click", ()=>{ location.hash = b.dataset.route; });
-  });
+  const listCard = dom(`
+    <div class="mailListCard card">
+      <div class="mailList"></div>
+    </div>
+  `);
 
-  // 리스트 렌더
-  const list = $("#mailList", wrap);
-  const search = $("#mailSearch", wrap);
+  const listEl = $(".mailList", listCard);
+  const fieldEl = $("#mailField", head);
+  const queryEl = $("#mailQuery", head);
+  const countEl = $("#mailCount", head);
 
-  function renderRows(q){
-    if (!list) return;
-    const query = String(q||"").trim().toLowerCase();
-    const filtered = !query ? items : items.filter(m=>{
-      const s = `${m.subject||""} ${m.from||""}`.toLowerCase();
-      return s.includes(query);
-    });
+  function renderList(items){
+    if (!listEl) return;
 
-    list.innerHTML = "";
-    if (!filtered.length){
-      list.appendChild(dom(`<div class="empty">자료가 존재하지 않습니다.</div>`));
+    if (countEl) countEl.textContent = `${items.length}건`;
+    listEl.innerHTML = "";
+
+    if (!items.length){
+      listEl.appendChild(dom(`<div class="empty">메일이 없습니다.</div>`));
       return;
     }
 
-    filtered.forEach(m=>{
-      list.appendChild(dom(`
-        <div class="list-item">
-          <div class="list-title">${escapeHtml(m.subject || "")}</div>
-          <div class="list-sub">${escapeHtml(`${m.from || "-"} · ${m.at || "-"}`)}</div>
+    items.forEach(m=>{
+      const row = dom(`
+        <div class="mailRow">
+          <div class="mailRowTitle">${escapeHtml(m.subject || "")}</div>
+          <div class="mailRowMeta">${escapeHtml(`${m.from || "-"} · ${m.at || "-"}`)}</div>
         </div>
-      `));
+      `);
+      listEl.appendChild(row);
     });
   }
 
-  if (search){
-    search.addEventListener("input", ()=> renderRows(search.value));
+  function applySearch(){
+    const field = fieldEl ? fieldEl.value : "subject";
+    const q = (queryEl ? queryEl.value : "").trim().toLowerCase();
+    if (!q) return renderList(all);
+
+    const filtered = all.filter(m=>{
+      const v = String(m[field] || "").toLowerCase();
+      return v.includes(q);
+    });
+    renderList(filtered);
   }
 
-  renderRows("");
+  const searchBtn = $("#mailSearchBtn", head);
+  const resetBtn  = $("#mailResetBtn", head);
 
+  if (searchBtn) searchBtn.addEventListener("click", applySearch);
+  if (resetBtn) resetBtn.addEventListener("click", ()=>{
+    if (queryEl) queryEl.value = "";
+    renderList(all);
+  });
+  if (queryEl){
+    queryEl.addEventListener("keydown", (e)=>{
+      if (e.key === "Enter") applySearch();
+    });
+  }
+
+  wrap.appendChild(head);
+  wrap.appendChild(listCard);
   els.view.appendChild(wrap);
+
+  renderList(all);
 }
+
 
 function viewBoard(db, sub){
   if (!els.view) return;
@@ -1159,7 +1171,18 @@ function viewSchedule(db, sub){
       location.hash = "#대쉬보드/home";
     }
 
-    if (els.badgePending) els.badgePending.textContent = String((db.approvals||[]).filter(x=>x.box==="inbox").length);
+    // ✅ badgePending은 대쉬보드에서만 표시 (다른 탭에서는 숨김)
+if (els.badgePending){
+  const n = (db.approvals||[]).filter(x=>x.box==="inbox").length;
+  if (t === "대쉬보드"){
+    els.badgePending.textContent = String(n);
+    els.badgePending.classList.remove("hidden");
+  } else {
+    els.badgePending.textContent = "";
+    els.badgePending.classList.add("hidden");
+  }
+}
+
   }
 
   /***********************
