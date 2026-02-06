@@ -240,6 +240,9 @@
 
       // 게시판(더미)
       boardPosts: [
+         { postId: uuid(), boardKey:"ceo",     title:"2월 운영 메시지", writer:"대표", at:"2026-02-02" },
+         { postId: uuid(), boardKey:"weekly",  title:"주간 프로젝트 진행사항(2월 1주차)", writer:"PMO", at:"2026-02-03" },
+         { postId: uuid(), boardKey:"gallery", title:"25년 송년의밤 회식", writer:"관리팀", at:"2026-02-01" },
         { postId: uuid(), boardKey:"notice", title:"2025년 연말정산 안내", writer:"총무팀", at:"2026-01-26" },
         { postId: uuid(), boardKey:"hr",     title:"인사발령(260126)", writer:"인사팀", at:"2026-01-26" },
         { postId: uuid(), boardKey:"minutes",title:"주간 회의록(1월 3주차)", writer:"PMO", at:"2026-01-21" }
@@ -392,11 +395,18 @@
 ],
 
     "게시판": [
-      { key:"notice",  label:"전사공지", route:"#게시판/notice" },
-      { key:"hr",      label:"인사발령", route:"#게시판/hr" },
-      { key:"minutes", label:"회의록",   route:"#게시판/minutes" },
-      { key:"free",    label:"자유게시판", route:"#게시판/free" }
-    ],
+  { key:"ceo",      label:"CEO Message", route:"#게시판/ceo" },
+  { key:"notice",   label:"전사공지",     route:"#게시판/notice" },
+  { key:"hr",       label:"인사발령",     route:"#게시판/hr" },
+  { key:"bid",      label:"경조사",       route:"#게시판/bid" },
+  { key:"orders",   label:"수주소식",     route:"#게시판/orders" },
+  { key:"minutes",  label:"회의록",       route:"#게시판/minutes" },
+  { key:"weekly",   label:"주간 프로젝트 진행사항", route:"#게시판/weekly" },
+  { key:"manual",   label:"매뉴얼",       route:"#게시판/manual" },
+  { key:"gallery",  label:"사진첩",       route:"#게시판/gallery" },
+  { key:"free",     label:"자유게시판",   route:"#게시판/free" }
+],
+
     "전자결재": [
       { key:"ea-inbox", label:"받은결재함", route:"#전자결재/ea-inbox" },
       { key:"ea-sent",  label:"보낸결재함", route:"#전자결재/ea-sent" },
