@@ -387,10 +387,10 @@
 
   const SIDE_MENUS = {
     "전자메일": [
-      { key:"mail-inbox", label:"받은편지함", route:"#전자메일/mail-inbox" },
-      { key:"mail-sent",  label:"보낸편지함", route:"#전자메일/mail-sent" },
-      { key:"mail-etc",   label:"기타",       route:"#전자메일/mail-etc" }
-    ],
+  { key:"mail-inbox", label:"받은편지함", route:"#전자메일/mail-inbox" },
+  { key:"mail-sent",  label:"보낸편지함", route:"#전자메일/mail-sent" }
+],
+
     "게시판": [
       { key:"notice",  label:"전사공지", route:"#게시판/notice" },
       { key:"hr",      label:"인사발령", route:"#게시판/hr" },
@@ -826,44 +826,94 @@
   if (!els.view) return;
   els.view.innerHTML = "";
 
-  const box = (sub === "mail-sent") ? "sent" : (sub === "mail-etc") ? "etc" : "inbox";
-  const title = `전자메일 · ${box === "inbox" ? "받은메일함" : box === "sent" ? "보낸메일함" : "기타"}`;
+  const box = (sub === "mail-sent") ? "sent" : "inbox"; // ✅ etc 제거
+  const title = `전자메일 · ${box === "inbox" ? "받은편지함" : "보낸편지함"}`;
   setRouteTitle(title);
 
-  const items = (db.mails || [])
+  // ✅ 혹시 과거 DB에 etc가 남아있으면 inbox로 흡수(안전)
+  const all = (db.mails || []).map(m => {
+    const b = String(m.box || "inbox");
+    return { ...m, box: (b === "etc") ? "inbox" : b };
+  });
+
+  const inboxCount = all.filter(m => m.box === "inbox").length;
+  const sentCount  = all.filter(m => m.box === "sent").length;
+
+  const items = all
     .filter(m => m.box === box)
     .slice()
     .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")))
-    .slice(0, 50);
+    .slice(0, 200);
 
-  const card = dom(`
-    <div class="card">
-      <div class="card-head">
-        <div class="card-title">${escapeHtml(title)}</div>
-        <div class="badge">${items.length}건</div>
-      </div>
-      <div class="list"></div>
+  const wrap = dom(`
+    <div class="mailLayout">
+      <aside class="mailSide card">
+        <div class="mailSideTitle">전자메일</div>
+
+        <button class="mailFolder ${box==="inbox"?"active":""}" type="button" data-route="#전자메일/mail-inbox">
+          <span class="txt">받은편지함</span>
+          <span class="cnt">${inboxCount}</span>
+        </button>
+
+        <button class="mailFolder ${box==="sent"?"active":""}" type="button" data-route="#전자메일/mail-sent">
+          <span class="txt">보낸편지함</span>
+          <span class="cnt">${sentCount}</span>
+        </button>
+      </aside>
+
+      <section class="mailMain card">
+        <div class="mailHead">
+          <div class="mailHeadTitle">${escapeHtml(title)}</div>
+          <div class="mailHeadRight">
+            <input class="mailSearch" id="mailSearch" type="search" placeholder="검색(제목/보낸사람)" />
+          </div>
+        </div>
+
+        <div class="list mailList" id="mailList"></div>
+      </section>
     </div>
   `);
 
-  const list = $(".list", card);
-  if (list){
-    if (!items.length){
+  // 폴더 클릭
+  $$(".mailFolder", wrap).forEach(b=>{
+    b.addEventListener("click", ()=>{ location.hash = b.dataset.route; });
+  });
+
+  // 리스트 렌더
+  const list = $("#mailList", wrap);
+  const search = $("#mailSearch", wrap);
+
+  function renderRows(q){
+    if (!list) return;
+    const query = String(q||"").trim().toLowerCase();
+    const filtered = !query ? items : items.filter(m=>{
+      const s = `${m.subject||""} ${m.from||""}`.toLowerCase();
+      return s.includes(query);
+    });
+
+    list.innerHTML = "";
+    if (!filtered.length){
       list.appendChild(dom(`<div class="empty">자료가 존재하지 않습니다.</div>`));
-    } else {
-      items.forEach(m=>{
-        list.appendChild(dom(`
-          <div class="list-item">
-            <div class="list-title">${escapeHtml(m.subject || "")}</div>
-            <div class="list-sub">${escapeHtml(`${m.from || "-"} · ${m.at || "-"}`)}</div>
-          </div>
-        `));
-      });
+      return;
     }
+
+    filtered.forEach(m=>{
+      list.appendChild(dom(`
+        <div class="list-item">
+          <div class="list-title">${escapeHtml(m.subject || "")}</div>
+          <div class="list-sub">${escapeHtml(`${m.from || "-"} · ${m.at || "-"}`)}</div>
+        </div>
+      `));
+    });
   }
 
-  els.view.appendChild(dom(`<div class="stack"></div>`));
-  $(".stack", els.view).appendChild(card);
+  if (search){
+    search.addEventListener("input", ()=> renderRows(search.value));
+  }
+
+  renderRows("");
+
+  els.view.appendChild(wrap);
 }
 
 function viewBoard(db, sub){
