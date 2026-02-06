@@ -566,6 +566,12 @@
     const avatarPreview = document.createElement("img");
     avatarPreview.id = "avatarPreview";
     avatarPreview.alt = "profile";
+     avatarPreview.addEventListener("error", () => {
+  avatarPreview.hidden = true;
+  avatarPreview.removeAttribute("src");
+  avatarPlaceholder.hidden = false;
+});
+
     if (me?.avatarDataUrl){
       avatarPreview.src = me.avatarDataUrl;
       avatarPreview.hidden = false;
