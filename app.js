@@ -1159,7 +1159,8 @@ function viewSchedule(db, sub){
 
     setActiveTopTab(t);
     renderSideMenu(t);
-    setActiveSide(raw);
+    setActiveSide(location.hash || raw);
+
 
     if (t === "전자메일"){
       viewMail(db, page);
