@@ -701,7 +701,7 @@ function viewProjectEditor(db){
   // Cards: 상단 상세 / 하단 리스트
   // -----------------------
   const detailCard = el("div", { class:"card2", style:"padding:0; margin-bottom:12px;" });
-  const listCard   = el("div", { class:"card2", style:"padding:0;" });
+  const listCard = el("div", { class:"card2 projectEditorListLimit", style:"padding:0;" });
 
   view.appendChild(topBar);
   view.appendChild(detailCard);
