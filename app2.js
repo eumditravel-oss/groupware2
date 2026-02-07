@@ -1177,9 +1177,70 @@ function viewDashboard(db){
     }
   });
 
-  const topBar = el("div", { class:"card2 wtTop2" },
-    el("div", { class:"wtTopRow2" }, qInput)
-  );
+  // -----------------------
+// UI: Year dropdown
+// -----------------------
+const LS_Y = "APP2_WORKTIME_YEAR";
+let selectedYear = Number(localStorage.getItem(LS_Y) || "") || (new Date().getFullYear());
+
+function projectYear(p){
+  // 1) startDate 우선 (YYYY-MM-DD)
+  const s = (p?.startDate || "").slice(0,4);
+  if (/^\d{4}$/.test(s)) return Number(s);
+
+  // 2) endDate
+  const e = (p?.endDate || "").slice(0,4);
+  if (/^\d{4}$/.test(e)) return Number(e);
+
+  // 3) 코드/ID 앞 4자리 (2025001 등)
+  const code = String(p?.projectCode || p?.projectId || "").slice(0,4);
+  if (/^\d{4}$/.test(code)) return Number(code);
+
+  return null;
+}
+
+function buildYearOptions(){
+  const years = projects
+    .map(projectYear)
+    .filter(y => Number.isFinite(y))
+    .sort((a,b)=>b-a);
+
+  const uniqYears = Array.from(new Set(years));
+  if (!uniqYears.length) uniqYears.push(new Date().getFullYear());
+
+  // 선택 년도가 목록에 없으면 첫 항목으로 보정
+  if (!uniqYears.includes(selectedYear)) selectedYear = uniqYears[0];
+
+  const sel = el("select", {
+    class:"btn2",
+    onchange:(e)=>{
+      selectedYear = Number(e.target.value);
+      localStorage.setItem(LS_Y, String(selectedYear));
+      rerender();
+    }
+  });
+
+  uniqYears.forEach(y=>{
+    const opt = el("option", { value:String(y) }, `${y}년`);
+    if (y === selectedYear) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  return sel;
+}
+
+let yearSelect = buildYearOptions();
+
+// ✅ 상단바: (좌) 검색 / (우) 년도 드롭박스
+const topBar = el("div", { class:"card2 wtTop2" },
+  el("div", { class:"wtTopRow2" },
+    qInput,
+    el("div", { style:"margin-left:auto;display:flex;gap:10px;align-items:center;" },
+      yearSelect
+    )
+  )
+);
+
 
   // -----------------------
   // Layout: 좌(리스트) / 우(상세)
@@ -1195,7 +1256,10 @@ function viewDashboard(db){
   // Render
   // -----------------------
   function rerender(){
-    const list = projects.filter(p => projectMatchesQuery(p));
+    const list = projects
+  .filter(p => projectYear(p) === selectedYear)
+  .filter(p => projectMatchesQuery(p));
+
 
     // 비어있을 때
     if (!list.length){
