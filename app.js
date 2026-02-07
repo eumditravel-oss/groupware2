@@ -283,6 +283,14 @@
         { bId: uuid(), name: "ㅇㅇㅇ 사원", md: "06-02" }
       ],
 
+             // ✅ 업체별 연락처(더미) - "게시판처럼" 리스트/검색/페이징만 제공
+      vendorContacts: [
+        { contactId: uuid(), company:"[ㅇㅇ건설(주)]", person:"ㅇㅇㅇ", phone:"010-1234-5678", email:"aaa@sample.com", note:"견적/납품 담당", at:"2026-02-03", views: 12 },
+        { contactId: uuid(), company:"[△△건설(주)]", person:"△△△", phone:"010-2222-3333", email:"bbb@sample.com", note:"구조팀 문의",     at:"2026-02-01", views: 5  },
+        { contactId: uuid(), company:"[□□협력사]",    person:"□□□", phone:"010-7777-8888", email:"ccc@sample.com", note:"자재 발주",     at:"2026-01-28", views: 2  }
+      ],
+
+
       // 업무관리(이 앱에서는 “바로가기만” 사용하지만, 기존 스키마는 유지)
       logs: [],
       checklists: []
@@ -320,7 +328,7 @@
     if (typeof db.meta.version !== "string") db.meta.version = seed.meta.version;
     if (typeof db.meta.createdAt !== "string") db.meta.createdAt = seed.meta.createdAt;
 
-    const ARR_FIELDS = ["users","projects","mails","boardPosts","approvals","staffSchedules","birthdays","logs","checklists"];
+    const ARR_FIELDS = ["users","projects","mails","boardPosts","vendorContacts","approvals","staffSchedules","birthdays","logs","checklists"];
     for (const k of ARR_FIELDS){
       if (!Array.isArray(db[k])) db[k] = Array.isArray(seed[k]) ? seed[k].slice() : [];
     }
@@ -354,6 +362,18 @@
       views: Number.isFinite(Number(p?.views)) ? Number(p.views) : 0,
       isNotice: !!p?.isNotice
     }));
+
+         db.vendorContacts = (db.vendorContacts || []).map(c => ({
+      contactId: String(c?.contactId || uuid()),
+      company: String(c?.company || ""),
+      person: String(c?.person || ""),
+      phone: String(c?.phone || ""),
+      email: String(c?.email || ""),
+      note: String(c?.note || ""),
+      at: String(c?.at || ""),
+      views: Number.isFinite(Number(c?.views)) ? Number(c.views) : 0
+    }));
+
 
 
     db.approvals = db.approvals.map(a => ({
@@ -461,10 +481,11 @@ const SIDE_MENUS = {
     { key:"schedule", label:"일정관리", route:"#일정관리/home" }
   ],
 
-  "업무관리": [
-    { key:"shortcut", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" }
+    "업무관리": [
+    { key:"shortcut", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" },
+    { key:"vendors",  label:"업체별 연락처 관리", route:"#업무관리/vendors" }
   ]
-};
+
 
 
   function firstMenuRoute(tabKey){
@@ -1337,6 +1358,201 @@ const cardSchedule = dashListCard({
   }
 
 
+     function viewVendors(db){
+    if (!els.view) return;
+    els.view.innerHTML = "";
+
+    const title = "업무관리 · 업체별 연락처 관리";
+    setRouteTitle(title);
+
+    const all = (db.vendorContacts || [])
+      .slice()
+      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+
+    // UI state (게시판과 동일)
+    const uiKey = "CONCOST_VENDOR_UI_V1";
+    const ui = safeParse(localStorage.getItem(uiKey) || "{}", {});
+    ui.field = ui.field || "company"; // company | person | phone
+    ui.q = typeof ui.q === "string" ? ui.q : "";
+    ui.page = Number.isFinite(Number(ui.page)) ? Number(ui.page) : 1;
+    const PAGE_SIZE = 10;
+
+    function saveUI(){ localStorage.setItem(uiKey, JSON.stringify(ui)); }
+
+    const wrap = dom(`
+      <div class="boardWrap">
+        <div class="boardHead card">
+          <div class="boardHeadTitle">${escapeHtml(title)}</div>
+          <div class="boardSearchRow">
+            <select class="boardSel" id="vendorField">
+              <option value="company">업체명</option>
+              <option value="person">담당자</option>
+              <option value="phone">연락처</option>
+            </select>
+            <input class="boardQ" id="vendorQ" placeholder="검색어를 입력해주세요." />
+            <button class="btn boardBtn" id="vendorSearchBtn" type="button">검색</button>
+          </div>
+        </div>
+
+        <div class="boardCard card">
+          <div class="boardTopLine">
+            <div class="boardCount" id="vendorCount"></div>
+          </div>
+
+          <div class="boardList" id="vendorList"></div>
+          <div class="boardPager" id="vendorPager"></div>
+        </div>
+      </div>
+    `);
+
+    els.view.appendChild(wrap);
+
+    const fieldEl = byId("vendorField");
+    const qEl = byId("vendorQ");
+    const btnEl = byId("vendorSearchBtn");
+    const listEl = byId("vendorList");
+    const cntEl = byId("vendorCount");
+    const pagerEl = byId("vendorPager");
+
+    if (fieldEl) fieldEl.value = ui.field;
+    if (qEl) qEl.value = ui.q;
+
+    function filtered(){
+      const q = String(ui.q || "").trim().toLowerCase();
+      let items = all.slice();
+
+      if (q){
+        if (ui.field === "person"){
+          items = items.filter(x => String(x.person||"").toLowerCase().includes(q));
+        } else if (ui.field === "phone"){
+          items = items.filter(x => String(x.phone||"").toLowerCase().includes(q));
+        } else {
+          items = items.filter(x => String(x.company||"").toLowerCase().includes(q));
+        }
+      }
+
+      // 표시번호(최신순 기준)
+      let n = items.length;
+      return items.map(it => ({ ...it, no: String(n--) }));
+    }
+
+    function render(){
+      const items = filtered();
+      const total = items.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      ui.page = Math.min(Math.max(1, ui.page), totalPages);
+      saveUI();
+
+      if (cntEl) cntEl.textContent = `전체 ${total}건`;
+
+      const start = (ui.page - 1) * PAGE_SIZE;
+      const pageItems = items.slice(start, start + PAGE_SIZE);
+
+      if (listEl){
+        listEl.innerHTML = "";
+
+        // header row (게시판과 동일 구조)
+        listEl.appendChild(dom(`
+          <div class="bRow bHead">
+            <div class="bCell bNoCol">번호</div>
+            <div class="bCell bTitleCol">업체명</div>
+            <div class="bCell bAtCol">연락처</div>
+            <div class="bCell bViewCol">등록일</div>
+          </div>
+        `));
+
+        if (!pageItems.length){
+          listEl.appendChild(dom(`<div class="bEmpty">표시할 데이터가 없습니다</div>`));
+        } else {
+          pageItems.forEach(x=>{
+            const row = dom(`
+              <div class="bRow">
+                <div class="bCell bNoCol"><span class="bNo">${escapeHtml(x.no)}</span></div>
+                <div class="bCell bTitleCol">
+                  <div class="bTitle">${escapeHtml(x.company || "")}</div>
+                  <div class="bSub">${escapeHtml(`${x.person || "-"}${x.email ? " · " + x.email : ""}${x.note ? " · " + x.note : ""}`)}</div>
+                </div>
+                <div class="bCell bAtCol">${escapeHtml(x.phone || "-")}</div>
+                <div class="bCell bViewCol">${escapeHtml(x.at || "-")}</div>
+              </div>
+            `);
+
+            row.addEventListener("click", ()=>{
+              // 조회수 증가(형식만)
+              try{
+                const target = (db.vendorContacts||[]).find(v => v.contactId === x.contactId);
+                if (target){
+                  target.views = Number(target.views||0) + 1;
+                  saveDB(db);
+                }
+              }catch{}
+              toast("상세보기/편집은 추후 연결 예정입니다.");
+            });
+
+            listEl.appendChild(row);
+          });
+        }
+      }
+
+      // pager (게시판과 동일)
+      if (pagerEl){
+        pagerEl.innerHTML = "";
+
+        const mkBtn = (label, page, disabled=false, active=false) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "bPageBtn" + (active ? " active" : "");
+          b.textContent = label;
+          b.disabled = !!disabled;
+          b.addEventListener("click", ()=>{
+            ui.page = page;
+            saveUI();
+            render();
+          });
+          return b;
+        };
+
+        pagerEl.appendChild(mkBtn("«", 1, ui.page === 1));
+        pagerEl.appendChild(mkBtn("‹", Math.max(1, ui.page - 1), ui.page === 1));
+
+        const span = 3;
+        let s = Math.max(1, ui.page - span);
+        let e = Math.min(totalPages, ui.page + span);
+        if (e - s < span * 2){
+          s = Math.max(1, e - span * 2);
+          e = Math.min(totalPages, s + span * 2);
+        }
+        for (let i=s;i<=e;i++){
+          pagerEl.appendChild(mkBtn(String(i), i, false, i === ui.page));
+        }
+
+        pagerEl.appendChild(mkBtn("›", Math.min(totalPages, ui.page + 1), ui.page === totalPages));
+        pagerEl.appendChild(mkBtn("»", totalPages, ui.page === totalPages));
+      }
+    }
+
+    function doSearch(){
+      ui.field = fieldEl ? fieldEl.value : "company";
+      ui.q = qEl ? qEl.value : "";
+      ui.page = 1;
+      saveUI();
+      render();
+    }
+
+    if (btnEl) btnEl.addEventListener("click", doSearch);
+    if (qEl){
+      qEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") doSearch(); });
+      qEl.addEventListener("input", ()=>{ ui.q = qEl.value; saveUI(); render(); });
+    }
+    if (fieldEl){
+      fieldEl.addEventListener("change", ()=>{ ui.field = fieldEl.value; saveUI(); render(); });
+    }
+
+    render();
+  }
+
+
+
   function viewEA(db, sub){
   if (!els.view) return;
   els.view.innerHTML = "";
@@ -1919,8 +2135,9 @@ function viewSchedule(db){
   if (page !== "home") { location.hash = "#일정관리/home"; return; }
   viewSchedule(db);
 }
- else if (t === "업무관리"){
+     } else if (t === "업무관리"){
       if (page === "shortcut") viewWorkShortcut();
+      else if (page === "vendors") viewVendors(db);
       else location.hash = "#업무관리/shortcut";
     } else {
       location.hash = "#대쉬보드/home";
