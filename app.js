@@ -1,4 +1,4 @@
-/* app.js (Groupware Main) v1.2
+/* app.js (Groupware Main) v1.2 — FULL (FIXED)
    ✅ 병합본(기존 v0.5 기능 + 현재 v1.1 DOM 가드)
    ✅ 제외조건 반영
    - ❌ "산출" 탭/메뉴/뷰/링크: 전부 제거
@@ -51,8 +51,6 @@
   }
 
   function fatalDomReport(){
-    // v1.1의 “죽지 않게” 가드 + v0.5 화면 요소를 고려해 “치명요소”만 체크
-    // (modal 등은 없어도 앱이 동작하도록 선택적)
     const required = ["topTabs","megaMenu","sideMenu","view","birthdayCard","profileCard","logoHome","toast"];
     const miss = required.filter(k => !els[k]).map(k=>k);
     if (miss.length){
@@ -88,7 +86,7 @@
   }
 
   function modalOpen(title, bodyNode, footNode){
-    if (!els.modalBackdrop) return; // modal DOM이 없으면 무시
+    if (!els.modalBackdrop) return;
     if (els.modalTitle) els.modalTitle.textContent = title || "";
     if (els.modalBody){
       els.modalBody.innerHTML = "";
@@ -107,7 +105,7 @@
   }
 
   /***********************
-   * Scroll / Background Fix (v0.5)
+   * Scroll / Background Fix
    ***********************/
   function applyScrollFix(){
     document.documentElement.style.height = "100%";
@@ -135,7 +133,7 @@
   }
 
   /***********************
-   * Roles (v0.5)
+   * Roles
    ***********************/
   const ROLE_ORDER = ["staff","leader","manager","director","vp","svp","ceo"];
 
@@ -157,7 +155,7 @@
   function isLeaderPlus(user){ return roleRank(user?.role || "staff") >= roleRank("leader"); }
 
   /***********************
-   * Storage / DB (v0.5)
+   * Storage / DB
    ***********************/
   const LS_KEY  = "CONCOST_GROUPWARE_DB_V05";
   const LS_USER = "CONCOST_GROUPWARE_USER_V05";
@@ -173,7 +171,6 @@
     const d = new Date();
     return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   }
-  function clamp(n,a,b){ return Math.min(b, Math.max(a,n)); }
 
   function uuid(){
     try{
@@ -233,42 +230,37 @@
 
       // 전자메일(더미)
       mails: [
-  // 기본(기존)
-  { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 문의사항 답변", from:"ㅇㅇ건설", at:"2026-01-26 09:12" },
-  { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 물량산출 체크리스트 송부", from:"ㅇㅇ건설", at:"2026-01-24 10:03" },
-   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 수량 물량증감 비교검토 요청", from:"ㅇㅇ건설", at:"2026-01-23 10:03" },
-   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 변경률 확인 요청", from:"ㅇㅇ건설", at:"2026-01-22 10:03" },
-   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 아이템 변경 요청", from:"ㅇㅇ건설", at:"2026-01-21 10:03" },
-   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 내역 반영 요청", from:"ㅇㅇ건설", at:"2026-01-20 10:03" },
-   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 수정요청", from:"ㅇㅇ건설", at:"2026-01-19 10:03" },
-  
-   { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 작업 데이터 송부", from:"(보낸메일)", at:"2026-01-20 16:22" },
-{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 산출서 송부",           from:"(보낸메일)", at:"2026-01-19 16:22" },
-{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 작업도면 송부",         from:"(보낸메일)", at:"2026-01-18 16:22" },
-{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 도면 수정에 의한 자료 송부", from:"(보낸메일)", at:"2026-01-17 16:22" },
-{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 물량 비교표 송부", from:"(보낸메일)", at:"2026-01-16 16:22" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 문의사항 답변", from:"ㅇㅇ건설", at:"2026-01-26 09:12" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 물량산출 체크리스트 송부", from:"ㅇㅇ건설", at:"2026-01-24 10:03" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 수량 물량증감 비교검토 요청", from:"ㅇㅇ건설", at:"2026-01-23 10:03" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 변경률 확인 요청", from:"ㅇㅇ건설", at:"2026-01-22 10:03" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 아이템 변경 요청", from:"ㅇㅇ건설", at:"2026-01-21 10:03" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 내역 반영 요청", from:"ㅇㅇ건설", at:"2026-01-20 10:03" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 수정요청", from:"ㅇㅇ건설", at:"2026-01-19 10:03" },
 
+        { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 작업 데이터 송부", from:"(보낸메일)", at:"2026-01-20 16:22" },
+        { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 산출서 송부", from:"(보낸메일)", at:"2026-01-19 16:22" },
+        { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 작업도면 송부", from:"(보낸메일)", at:"2026-01-18 16:22" },
+        { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 도면 수정에 의한 자료 송부", from:"(보낸메일)", at:"2026-01-17 16:22" },
+        { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 물량 비교표 송부", from:"(보낸메일)", at:"2026-01-16 16:22" },
 
-  // ✅ 체크리스트(예시)
-  { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부', from:"(보낸메일)", at:"2026-02-02 09:40" },
-  { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(보완 요청)', from:"(보낸메일)", at:"2026-02-03 14:18" },
-  { mailId: uuid(), box:"sent",  subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(회신)', from:"(보낸메일)", at:"2026-02-03 16:02" },
+        { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부', from:"(보낸메일)", at:"2026-02-02 09:40" },
+        { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(보완 요청)', from:"(보낸메일)", at:"2026-02-03 14:18" },
+        { mailId: uuid(), box:"sent",  subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(회신)', from:"(보낸메일)", at:"2026-02-03 16:02" },
 
-  // ✅ 납품메일(예시)
-  { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 10:05" },
-  { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 확인요청", from:"ㅇㅇ건설(주)", at:"2026-02-04 15:22" },
-  { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 09:55" },
-],
-
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 10:05" },
+        { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 확인요청", from:"ㅇㅇ건설(주)", at:"2026-02-04 15:22" },
+        { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 09:55" },
+      ],
 
       // 게시판(더미)
       boardPosts: [
-         { postId: uuid(), boardKey:"ceo",     title:"2월 운영 메시지", writer:"대표", at:"2026-02-02" },
-         { postId: uuid(), boardKey:"weekly",  title:"주간 프로젝트 진행사항(2월 1주차)", writer:"PMO", at:"2026-02-03" },
-         { postId: uuid(), boardKey:"gallery", title:"25년 송년의밤 회식", writer:"관리팀", at:"2026-02-01" },
-        { postId: uuid(), boardKey:"notice", title:"2025년 연말정산 안내", writer:"총무팀", at:"2026-01-26" },
-        { postId: uuid(), boardKey:"hr",     title:"인사발령(260126)", writer:"인사팀", at:"2026-01-26" },
-        { postId: uuid(), boardKey:"minutes",title:"주간 회의록(1월 3주차)", writer:"PMO", at:"2026-01-21" }
+        { postId: uuid(), boardKey:"ceo",     title:"2월 운영 메시지", writer:"대표", at:"2026-02-02" },
+        { postId: uuid(), boardKey:"weekly",  title:"주간 프로젝트 진행사항(2월 1주차)", writer:"PMO", at:"2026-02-03" },
+        { postId: uuid(), boardKey:"gallery", title:"25년 송년의밤 회식", writer:"관리팀", at:"2026-02-01" },
+        { postId: uuid(), boardKey:"notice",  title:"2025년 연말정산 안내", writer:"총무팀", at:"2026-01-26" },
+        { postId: uuid(), boardKey:"hr",      title:"인사발령(260126)", writer:"인사팀", at:"2026-01-26" },
+        { postId: uuid(), boardKey:"minutes", title:"주간 회의록(1월 3주차)", writer:"PMO", at:"2026-01-21" }
       ],
 
       // 전자결재(더미)
@@ -302,31 +294,25 @@
 
   function upgradeDB(db){
     const seed = makeSeedDB();
-     function syncSeedMails(db, seed){
-  // seed 버전이 바뀌면, seed에 있는 메일을 db에 "병합"한다 (중복은 box+subject+at 기준)
-  const prevVer = String(db?.meta?.seedMailsVersion || "");
-  const nextVer = String(seed?.meta?.seedMailsVersion || "");
-  if (!nextVer) return;
 
-  // 버전이 같으면 아무것도 안함
-  if (prevVer === nextVer) return;
+    function syncSeedMails(db, seed){
+      const prevVer = String(db?.meta?.seedMailsVersion || "");
+      const nextVer = String(seed?.meta?.seedMailsVersion || "");
+      if (!nextVer) return;
+      if (prevVer === nextVer) return;
 
-  const exist = new Set(
-    (db.mails || []).map(m => `${m.box}||${m.subject}||${m.at}`)
-  );
+      const exist = new Set((db.mails || []).map(m => `${m.box}||${m.subject}||${m.at}`));
+      (seed.mails || []).forEach(m=>{
+        const k = `${m.box}||${m.subject}||${m.at}`;
+        if (!exist.has(k)){
+          db.mails.push(m);
+          exist.add(k);
+        }
+      });
 
-  (seed.mails || []).forEach(m=>{
-    const k = `${m.box}||${m.subject}||${m.at}`;
-    if (!exist.has(k)){
-      db.mails.push(m);
-      exist.add(k);
+      db.meta.seedMailsVersion = nextVer;
     }
-  });
 
-  db.meta.seedMailsVersion = nextVer;
-}
-
-     
     if (!isPlainObject(db)) return seed;
 
     if (!isPlainObject(db.meta)) db.meta = {};
@@ -334,21 +320,11 @@
     if (typeof db.meta.createdAt !== "string") db.meta.createdAt = seed.meta.createdAt;
 
     const ARR_FIELDS = ["users","projects","mails","boardPosts","approvals","staffSchedules","birthdays","logs","checklists"];
-for (const k of ARR_FIELDS){
-  if (!Array.isArray(db[k])) db[k] = Array.isArray(seed[k]) ? seed[k].slice() : [];
-}
+    for (const k of ARR_FIELDS){
+      if (!Array.isArray(db[k])) db[k] = Array.isArray(seed[k]) ? seed[k].slice() : [];
+    }
 
-// ✅ 여기 추가
-syncSeedMails(db, seed);
-
-// 이후 기존 map 정규화 로직 계속
-db.mails = db.mails.map(m => ({
-  mailId: String(m?.mailId || uuid()),
-  box: String(m?.box || "inbox"),
-  subject: String(m?.subject || ""),
-  from: String(m?.from || ""),
-  at: String(m?.at || "")
-}));
+    syncSeedMails(db, seed);
 
     if (!db.users.length) db.users = seed.users.slice();
     if (!db.projects.length) db.projects = seed.projects.slice();
@@ -399,8 +375,7 @@ db.mails = db.mails.map(m => ({
       md: String(b?.md || "01-01")
     }));
 
-    // logs/checklists는 기존 앱2에서 사용 가능하도록 shape만 유지
-    db.logs = db.logs.map(l => ({
+    db.logs = (db.logs || []).map(l => ({
       logId: String(l?.logId || uuid()),
       date: String(l?.date || ""),
       projectId: String(l?.projectId || (db.projects[0]?.projectId || "")),
@@ -435,11 +410,10 @@ db.mails = db.mails.map(m => ({
     localStorage.setItem(LS_USER, db.users[0].userId);
     return db.users[0].userId;
   }
-  function setUserId(uid){ localStorage.setItem(LS_USER, uid); }
   function userById(db, id){ return db.users.find(u => u.userId === id) || null; }
 
   /***********************
-   * Tabs / Menus (✅ 산출 제거, ✅ 업무관리=바로가기만)
+   * Tabs / Menus
    ***********************/
   const TOP_TABS = [
     { key:"전자메일", label:"전자메일" },
@@ -451,27 +425,24 @@ db.mails = db.mails.map(m => ({
 
   const SIDE_MENUS = {
     "전자메일": [
-  { key:"mail-inbox",     label:"받은편지함",       route:"#전자메일/mail-inbox" },
-  { key:"mail-sent",      label:"보낸편지함",       route:"#전자메일/mail-sent" },
-  { key:"mail-draft",     label:"임시보관함",       route:"#전자메일/mail-draft" },
-  { key:"mail-scheduled", label:"예약메세지보기",   route:"#전자메일/mail-scheduled" },
-  { key:"mail-starred",   label:"중요편지함",       route:"#전자메일/mail-starred" },
-],
-
-
+      { key:"mail-inbox",     label:"받은편지함",     route:"#전자메일/mail-inbox" },
+      { key:"mail-sent",      label:"보낸편지함",     route:"#전자메일/mail-sent" },
+      { key:"mail-draft",     label:"임시보관함",     route:"#전자메일/mail-draft" },
+      { key:"mail-scheduled", label:"예약메세지보기", route:"#전자메일/mail-scheduled" },
+      { key:"mail-starred",   label:"중요편지함",     route:"#전자메일/mail-starred" },
+    ],
     "게시판": [
-  { key:"ceo",      label:"CEO Message", route:"#게시판/ceo" },
-  { key:"notice",   label:"전사공지",     route:"#게시판/notice" },
-  { key:"hr",       label:"인사발령",     route:"#게시판/hr" },
-  { key:"bid",      label:"경조사",       route:"#게시판/bid" },
-  { key:"orders",   label:"수주소식",     route:"#게시판/orders" },
-  { key:"minutes",  label:"회의록",       route:"#게시판/minutes" },
-  { key:"weekly",   label:"주간 프로젝트 진행사항", route:"#게시판/weekly" },
-  { key:"manual",   label:"매뉴얼",       route:"#게시판/manual" },
-  { key:"gallery",  label:"사진첩",       route:"#게시판/gallery" },
-  { key:"free",     label:"자유게시판",   route:"#게시판/free" }
-],
-
+      { key:"ceo",     label:"CEO Message", route:"#게시판/ceo" },
+      { key:"notice",  label:"전사공지",     route:"#게시판/notice" },
+      { key:"hr",      label:"인사발령",     route:"#게시판/hr" },
+      { key:"bid",     label:"경조사",       route:"#게시판/bid" },
+      { key:"orders",  label:"수주소식",     route:"#게시판/orders" },
+      { key:"minutes", label:"회의록",       route:"#게시판/minutes" },
+      { key:"weekly",  label:"주간 프로젝트 진행사항", route:"#게시판/weekly" },
+      { key:"manual",  label:"매뉴얼",       route:"#게시판/manual" },
+      { key:"gallery", label:"사진첩",       route:"#게시판/gallery" },
+      { key:"free",    label:"자유게시판",   route:"#게시판/free" }
+    ],
     "전자결재": [
       { key:"ea-inbox", label:"받은결재함", route:"#전자결재/ea-inbox" },
       { key:"ea-sent",  label:"보낸결재함", route:"#전자결재/ea-sent" },
@@ -482,7 +453,6 @@ db.mails = db.mails.map(m => ({
       { key:"company-calendar", label:"회사공식일정", route:"#일정관리/company-calendar" }
     ],
     "업무관리": [
-      // ✅ 요구사항: 이 항목만 유지
       { key:"shortcut", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" }
     ]
   };
@@ -494,7 +464,7 @@ db.mails = db.mails.map(m => ({
   }
 
   /***********************
-   * MegaMenu (v1.1 + 안전)
+   * MegaMenu
    ***********************/
   function openMega(){ if (els.megaMenu) els.megaMenu.classList.add("open"); }
   function closeMega(){ if (els.megaMenu) els.megaMenu.classList.remove("open"); }
@@ -517,11 +487,10 @@ db.mails = db.mails.map(m => ({
   function renderMegaMenu(){
     if (!els.megaMenu) return;
 
-    // index.html 구조가 mega-inner/mega-col 형태여도, 단순 mega-col 나열이어도 동작
     const root = $(".mega-inner", els.megaMenu) || els.megaMenu;
     const cols = $$(".mega-col", root);
 
-    const keys = TOP_TABS.map(t => t.key); // 산출 없음
+    const keys = TOP_TABS.map(t => t.key);
     keys.forEach((k, i) => {
       const col = cols[i];
       if (!col) return;
@@ -543,7 +512,6 @@ db.mails = db.mails.map(m => ({
             e.preventDefault();
             openApp2();
           } else {
-            // hash 이동은 기본 동작으로 처리
             closeMega();
           }
         });
@@ -551,7 +519,6 @@ db.mails = db.mails.map(m => ({
       });
     });
 
-    // hover open/close (v0.5 안정성)
     const wrap = $(".navWrap") || els.topTabs?.parentElement;
     if (wrap && !wrap.dataset.megaBound){
       wrap.dataset.megaBound = "1";
@@ -565,7 +532,6 @@ db.mails = db.mails.map(m => ({
       els.megaMenu.addEventListener("mouseenter", open);
       els.megaMenu.addEventListener("mouseleave", close);
 
-      // 모바일/터치: 탭 영역 빈 곳 클릭 시 토글
       els.topTabs?.addEventListener("click", (e)=>{
         if (e.target?.closest(".topTab, .top-tab")) return;
         if (e.target?.closest("#megaMenu")) return;
@@ -584,7 +550,6 @@ db.mails = db.mails.map(m => ({
   function renderSideMenu(tabKey){
     if (!els.sideMenu) return;
 
-    // 대쉬보드에서는 “소메뉴 안뜸” 요구를 만족시키기 위해 아예 비움
     if (tabKey === "대쉬보드"){
       els.sideMenu.innerHTML = "";
       return;
@@ -607,17 +572,16 @@ db.mails = db.mails.map(m => ({
   }
 
   function setActiveSide(route){
-  if (!els.sideMenu) return;
-  const r = decodeURIComponent(String(route || ""));
-  $$("#sideMenu .side-item").forEach(b => {
-    const br = decodeURIComponent(String(b.dataset.route || ""));
-    b.classList.toggle("active", br === r);
-  });
-}
-
+    if (!els.sideMenu) return;
+    const r = decodeURIComponent(String(route || ""));
+    $$("#sideMenu .side-item").forEach(b => {
+      const br = decodeURIComponent(String(b.dataset.route || ""));
+      b.classList.toggle("active", br === r);
+    });
+  }
 
   /***********************
-   * Profile (v0.5 확장)
+   * Profile
    ***********************/
   async function fileToDataURL(file){
     return new Promise((resolve,reject)=>{
@@ -628,13 +592,18 @@ db.mails = db.mails.map(m => ({
     });
   }
 
+  function dom(html){
+    const wrap = document.createElement("div");
+    wrap.innerHTML = html.trim();
+    return wrap.firstElementChild;
+  }
+
   function renderProfile(db){
     if (!els.profileCard) return;
 
     const uid = getUserId(db);
     const me = userById(db, uid);
 
-    // avatar UI
     const avatarInput = document.createElement("input");
     avatarInput.type = "file";
     avatarInput.accept = "image/*";
@@ -644,24 +613,26 @@ db.mails = db.mails.map(m => ({
     const avatarPreview = document.createElement("img");
     avatarPreview.id = "avatarPreview";
     avatarPreview.alt = "profile";
-     avatarPreview.addEventListener("error", () => {
-  avatarPreview.hidden = true;
-  avatarPreview.removeAttribute("src");
-  avatarPlaceholder.hidden = false;
-});
-
-    if (me?.avatarDataUrl){
-      avatarPreview.src = me.avatarDataUrl;
-      avatarPreview.hidden = false;
-    } else {
-      avatarPreview.hidden = true;
-    }
 
     const avatarPlaceholder = document.createElement("div");
     avatarPlaceholder.id = "avatarPlaceholder";
     avatarPlaceholder.className = "avatar-placeholder";
-    if (me?.avatarDataUrl) avatarPlaceholder.hidden = true;
     avatarPlaceholder.innerHTML = `<div class="avatar-icon">👤</div><div class="avatar-text">사진 업로드</div>`;
+
+    avatarPreview.addEventListener("error", () => {
+      avatarPreview.hidden = true;
+      avatarPreview.removeAttribute("src");
+      avatarPlaceholder.hidden = false;
+    });
+
+    if (me?.avatarDataUrl){
+      avatarPreview.src = me.avatarDataUrl;
+      avatarPreview.hidden = false;
+      avatarPlaceholder.hidden = true;
+    } else {
+      avatarPreview.hidden = true;
+      avatarPlaceholder.hidden = false;
+    }
 
     const avatarBox = document.createElement("div");
     avatarBox.className = "avatar";
@@ -692,7 +663,6 @@ db.mails = db.mails.map(m => ({
       }
     });
 
-    // role select
     const roleSelect = document.createElement("select");
     roleSelect.className = "select profileSelect";
     ROLE_ORDER.forEach(r=>{
@@ -731,12 +701,6 @@ db.mails = db.mails.map(m => ({
       top.appendChild(avatarInput);
     }
     if (roleVal) roleVal.appendChild(roleSelect);
-  }
-
-  function dom(html){
-    const wrap = document.createElement("div");
-    wrap.innerHTML = html.trim();
-    return wrap.firstElementChild;
   }
 
   /***********************
@@ -796,7 +760,7 @@ db.mails = db.mails.map(m => ({
   }
 
   /***********************
-   * Views (v0.5 기반: 메일/게시판/결재/일정 + 대쉬보드 요약)
+   * Views
    ***********************/
   function setRouteTitle(text){
     const t = byId("routeTitle");
@@ -901,314 +865,379 @@ db.mails = db.mails.map(m => ({
   }
 
   function viewMail(db, sub){
-  if (!els.view) return;
-  els.view.innerHTML = "";
+    if (!els.view) return;
+    els.view.innerHTML = "";
 
-  // 라우트별 박스
-  const boxBySub = {
-    "mail-inbox": "inbox",
-    "mail-sent": "sent",
-    "mail-draft": "draft",
-    "mail-scheduled": "scheduled",
-    "mail-starred": "starred",
-  };
-  const labelBySub = {
-    "mail-inbox": "받은편지함",
-    "mail-sent": "보낸편지함",
-    "mail-draft": "임시보관함",
-    "mail-scheduled": "예약메세지보기",
-    "mail-starred": "중요편지함",
-  };
+    const boxBySub = {
+      "mail-inbox": "inbox",
+      "mail-sent": "sent",
+      "mail-draft": "draft",
+      "mail-scheduled": "scheduled",
+      "mail-starred": "starred",
+    };
+    const labelBySub = {
+      "mail-inbox": "받은편지함",
+      "mail-sent": "보낸편지함",
+      "mail-draft": "임시보관함",
+      "mail-scheduled": "예약메세지보기",
+      "mail-starred": "중요편지함",
+    };
 
-  const box = boxBySub[sub] || "inbox";
-  const folderTitle = labelBySub[sub] || "받은편지함";
-  setRouteTitle(`전자메일 · ${folderTitle}`);
+    const box = boxBySub[sub] || "inbox";
+    const folderTitle = labelBySub[sub] || "받은편지함";
+    setRouteTitle(`전자메일 · ${folderTitle}`);
 
-  // 데이터 (더미는 그대로 사용)
-  const all = (db.mails || [])
-    .filter(m => String(m.box||"") === String(box))
-    .slice()
-    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+    const all = (db.mails || [])
+      .filter(m => String(m.box||"") === String(box))
+      .slice()
+      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
 
-  // 상태(별/체크) : 로컬 UI 상태만
-  const mailUIKey = "CONCOST_MAIL_UI_V1";
-  const ui = safeParse(localStorage.getItem(mailUIKey) || "{}", {});
-  if (!ui.star) ui.star = {};
-  if (!ui.check) ui.check = {};
-  function saveUI(){ localStorage.setItem(mailUIKey, JSON.stringify(ui)); }
+    const mailUIKey = "CONCOST_MAIL_UI_V1";
+    const ui = safeParse(localStorage.getItem(mailUIKey) || "{}", {});
+    if (!ui.star) ui.star = {};
+    if (!ui.check) ui.check = {};
+    ui.cat = ui.cat || "basic";
+    function saveUI(){ localStorage.setItem(mailUIKey, JSON.stringify(ui)); }
 
-  // 상단 카테고리 탭: 기본/체크리스트/납품메일 (UI만)
-  const showCatTabs = (box === "inbox" || box === "sent");
+    const showCatTabs = (box === "inbox" || box === "sent");
+    const catTabs = showCatTabs ? [
+      { key:"basic",     label:"기본" },
+      { key:"checklist", label:"체크리스트" },
+      { key:"deliver",   label:"납품메일" },
+    ] : [];
+    if (!showCatTabs) ui.cat = "basic";
 
-const catTabs = showCatTabs ? [
-  { key:"basic",     label:"기본" },
-  { key:"checklist", label:"체크리스트" },
-  { key:"deliver",   label:"납품메일" },
-] : [];
-
-ui.cat = ui.cat || "basic";
-if (!showCatTabs) ui.cat = "basic"; // 받은/보낸이 아니면 항상 basic
-
-  // --- 레이아웃 ---
-  const layout = dom(`
-    <div class="mailG">
-      <div class="mailGTop card">
-        <div class="mailGTopLeft">
-          <button class="btn tiny mailGIcon" type="button" title="새 메일">✎</button>
-          <button class="btn tiny mailGIcon" type="button" title="새로고침">⟳</button>
-        </div>
-
-        <div class="mailGTopMid">
-          <div class="mailGTabs" id="mailGTabs" style="${showCatTabs ? "" : "display:none;"}"></div>
-
-        </div>
-
-        <div class="mailGTopRight">
-          <input class="mailGSearch" id="mailGSearch" placeholder="메일 검색" />
-          <div class="mailGCount" id="mailGCount"></div>
-        </div>
-      </div>
-
-      <div class="mailGBody">
-        <div class="mailGList card">
-          <div class="mailGListHead">
-            <label class="mailGChkAll">
-              <input type="checkbox" id="mailChkAll">
-              <span></span>
-            </label>
+    const layout = dom(`
+      <div class="mailG">
+        <div class="mailGTop card">
+          <div class="mailGTopLeft">
+            <button class="btn tiny mailGIcon" type="button" title="새 메일">✎</button>
+            <button class="btn tiny mailGIcon" type="button" title="새로고침">⟳</button>
           </div>
 
-          <div class="mailGRows" id="mailGRows"></div>
-        </div>
-      </div>
-    </div>
-  `);
+          <div class="mailGTopMid">
+            <div class="mailGTabs" id="mailGTabs" style="${showCatTabs ? "" : "display:none;"}"></div>
+          </div>
 
-  els.view.appendChild(layout);
-
-  const tabsHost = byId("mailGTabs");
-  const rowsHost = byId("mailGRows");
-  const qEl = byId("mailGSearch");
-  const countEl = byId("mailGCount");
-  const chkAll = byId("mailChkAll");
-
-  // 탭 렌더
-  function renderTabs(){
-    if (!tabsHost) return;
-     if (!showCatTabs){ tabsHost.innerHTML = ""; return; }
-    tabsHost.innerHTML = "";
-    catTabs.forEach(t=>{
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "mailGTab" + (ui.cat === t.key ? " active" : "");
-      b.textContent = t.label;
-      b.addEventListener("click", ()=>{
-        ui.cat = t.key;
-        saveUI();
-        renderTabs();
-        applyFilter();
-      });
-      tabsHost.appendChild(b);
-    });
-  }
-
-  // row 렌더 (체크박스/별/발신자/제목/날짜)
-  function rowEl(m){
-    const id = m.mailId || "";
-    const isStar = !!ui.star[id];
-    const isChecked = !!ui.check[id];
-
-    const row = dom(`
-      <div class="mailGRow" data-id="${escapeHtml(id)}">
-        <div class="mailGCol mailGColChk">
-          <label class="mailGChk">
-            <input type="checkbox" ${isChecked ? "checked" : ""}>
-            <span></span>
-          </label>
+          <div class="mailGTopRight">
+            <input class="mailGSearch" id="mailGSearch" placeholder="메일 검색" />
+            <div class="mailGCount" id="mailGCount"></div>
+          </div>
         </div>
 
-        <div class="mailGCol mailGColStar" title="중요">
-          <button class="mailGStar ${isStar ? "on" : ""}" type="button" aria-label="star">★</button>
-        </div>
-
-        <div class="mailGCol mailGColFrom">
-          <div class="mailGFrom">${escapeHtml(m.from || "-")}</div>
-        </div>
-
-        <div class="mailGCol mailGColSubject">
-          <div class="mailGSubject">${escapeHtml(m.subject || "")}</div>
-        </div>
-
-        <div class="mailGCol mailGColAt">
-          <div class="mailGAt">${escapeHtml(m.at || "-")}</div>
+        <div class="mailGBody">
+          <div class="mailGList card">
+            <div class="mailGListHead">
+              <label class="mailGChkAll">
+                <input type="checkbox" id="mailChkAll">
+                <span></span>
+              </label>
+            </div>
+            <div class="mailGRows" id="mailGRows"></div>
+          </div>
         </div>
       </div>
     `);
 
-    // 체크
-    const cb = row.querySelector('input[type="checkbox"]');
-    if (cb){
-      cb.addEventListener("change", ()=>{
-        ui.check[id] = cb.checked;
-        saveUI();
-        syncChkAll();
+    els.view.appendChild(layout);
+
+    const tabsHost = byId("mailGTabs");
+    const rowsHost = byId("mailGRows");
+    const qEl = byId("mailGSearch");
+    const countEl = byId("mailGCount");
+    const chkAll = byId("mailChkAll");
+
+    function renderTabs(){
+      if (!tabsHost) return;
+      if (!showCatTabs){ tabsHost.innerHTML = ""; return; }
+      tabsHost.innerHTML = "";
+      catTabs.forEach(t=>{
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "mailGTab" + (ui.cat === t.key ? " active" : "");
+        b.textContent = t.label;
+        b.addEventListener("click", ()=>{
+          ui.cat = t.key;
+          saveUI();
+          renderTabs();
+          applyFilter();
+        });
+        tabsHost.appendChild(b);
       });
     }
 
-    // 별
-    const starBtn = row.querySelector(".mailGStar");
-    if (starBtn){
-      starBtn.addEventListener("click", (e)=>{
-        e.stopPropagation();
-        ui.star[id] = !ui.star[id];
-        saveUI();
-        starBtn.classList.toggle("on", !!ui.star[id]);
-        // 중요편지함이면 즉시 반영
-        if (box === "starred") applyFilter();
-      });
-    }
+    function rowEl(m){
+      const id = m.mailId || "";
+      const isStar = !!ui.star[id];
+      const isChecked = !!ui.check[id];
 
-    return row;
-  }
-
-  function renderRows(items){
-    if (!rowsHost) return;
-    rowsHost.innerHTML = "";
-    if (countEl) countEl.textContent = `${items.length}개`;
-
-    if (!items.length){
-      rowsHost.appendChild(dom(`<div class="mailGEmpty">메일이 없습니다.</div>`));
-      if (chkAll) chkAll.checked = false;
-      return;
-    }
-
-    items.forEach(m => rowsHost.appendChild(rowEl(m)));
-    syncChkAll();
-  }
-
-  function syncChkAll(){
-    if (!chkAll) return;
-    const ids = (filteredCache || []).map(m => m.mailId).filter(Boolean);
-    if (!ids.length){ chkAll.checked = false; return; }
-    chkAll.checked = ids.every(id => !!ui.check[id]);
-  }
-
-  let filteredCache = [];
-
-     
-
-
-  // 필터: (1) 검색 (2) 중요편지함이면 star true만
-  // 카테고리 탭은 지금은 UI만(필요 시 나중에 subject prefix 등으로 분류 로직 추가)
-  function applyFilter(){
-  const q = (qEl ? qEl.value : "").trim().toLowerCase();
-
-  let items = all.slice();
-
-  // ✅ 카테고리 탭 필터(받은/보낸에서만)
-  if (showCatTabs){
-    const subOf = (m)=> String(m.subject || "");
-    if (ui.cat === "checklist"){
-      items = items.filter(m => subOf(m).includes("[체크리스트 자료]"));
-    } else if (ui.cat === "deliver"){
-      items = items.filter(m => subOf(m).includes("_납품") || subOf(m).includes("납품"));
-    } else {
-      // basic: 체크리스트/납품 제외(원하면 이 basic 분기 자체를 지우면 “모두표시”가 됨)
-      items = items.filter(m => {
-        const s = subOf(m);
-        return !(s.includes("[체크리스트 자료]") || s.includes("_납품") || s.includes("납품"));
-      });
-    }
-  }
-
-  // 중요편지함이면 star만
-  if (box === "starred"){
-    items = items.filter(m => !!ui.star[m.mailId]);
-  }
-
-  if (q){
-    items = items.filter(m=>{
-      const s = `${m.from||""} ${m.subject||""} ${m.at||""}`.toLowerCase();
-      return s.includes(q);
-    });
-  }
-
-  filteredCache = items;
-  renderRows(items);
-}
-
-
-  if (qEl){
-    qEl.addEventListener("keydown", (e)=>{
-      if (e.key === "Enter") applyFilter();
-    });
-    qEl.addEventListener("input", ()=>{
-      // 실시간 필터
-      applyFilter();
-    });
-  }
-
-  if (chkAll){
-    chkAll.addEventListener("change", ()=>{
-      const ids = (filteredCache || []).map(m => m.mailId).filter(Boolean);
-      ids.forEach(id => ui.check[id] = chkAll.checked);
-      saveUI();
-      applyFilter(); // UI 리프레시
-    });
-  }
-
-  renderTabs();
-  applyFilter();
-}
-
-
-
-function viewBoard(db, sub){
-
-function viewSchedule(db, sub){
-  if (!els.view) return;
-  els.view.innerHTML = "";
-
-  const label = (sub === "vacation") ? "휴가관리" : "회사공식일정";
-  const title = `일정관리 · ${label}`;
-  setRouteTitle(title);
-
-  // ✅ 구형 UI: 캘린더 제거, 리스트만 표시
-  const items = (db.staffSchedules || [])
-    .slice()
-    .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
-    .slice(0, 50);
-
-  const card = dom(`
-    <div class="card">
-      <div class="card-head">
-        <div class="card-title">${escapeHtml(title)}</div>
-        <div class="badge">${items.length}건</div>
-      </div>
-      <div class="list"></div>
-    </div>
-  `);
-
-  const list = $(".list", card);
-  if (list){
-    if (!items.length){
-      list.appendChild(dom(`<div class="empty">표시할 일정이 없습니다</div>`));
-    } else {
-      items.forEach(e=>{
-        list.appendChild(dom(`
-          <div class="list-item">
-            <div class="list-title">${escapeHtml(`${e.type || "-"} · ${e.name || "-"}`)}</div>
-            <div class="list-sub">${escapeHtml(`${e.date || "-"} · ${e.note || ""}`.trim())}</div>
+      const row = dom(`
+        <div class="mailGRow" data-id="${escapeHtml(id)}">
+          <div class="mailGCol mailGColChk">
+            <label class="mailGChk">
+              <input type="checkbox" ${isChecked ? "checked" : ""}>
+              <span></span>
+            </label>
           </div>
-        `));
+
+          <div class="mailGCol mailGColStar" title="중요">
+            <button class="mailGStar ${isStar ? "on" : ""}" type="button" aria-label="star">★</button>
+          </div>
+
+          <div class="mailGCol mailGColFrom">
+            <div class="mailGFrom">${escapeHtml(m.from || "-")}</div>
+          </div>
+
+          <div class="mailGCol mailGColSubject">
+            <div class="mailGSubject">${escapeHtml(m.subject || "")}</div>
+          </div>
+
+          <div class="mailGCol mailGColAt">
+            <div class="mailGAt">${escapeHtml(m.at || "-")}</div>
+          </div>
+        </div>
+      `);
+
+      const cb = row.querySelector('input[type="checkbox"]');
+      if (cb){
+        cb.addEventListener("change", ()=>{
+          ui.check[id] = cb.checked;
+          saveUI();
+          syncChkAll();
+        });
+      }
+
+      const starBtn = row.querySelector(".mailGStar");
+      if (starBtn){
+        starBtn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          ui.star[id] = !ui.star[id];
+          saveUI();
+          starBtn.classList.toggle("on", !!ui.star[id]);
+          if (box === "starred") applyFilter();
+        });
+      }
+
+      return row;
+    }
+
+    function renderRows(items){
+      if (!rowsHost) return;
+      rowsHost.innerHTML = "";
+      if (countEl) countEl.textContent = `${items.length}개`;
+
+      if (!items.length){
+        rowsHost.appendChild(dom(`<div class="mailGEmpty">메일이 없습니다.</div>`));
+        if (chkAll) chkAll.checked = false;
+        return;
+      }
+
+      items.forEach(m => rowsHost.appendChild(rowEl(m)));
+      syncChkAll();
+    }
+
+    let filteredCache = [];
+
+    function syncChkAll(){
+      if (!chkAll) return;
+      const ids = (filteredCache || []).map(m => m.mailId).filter(Boolean);
+      if (!ids.length){ chkAll.checked = false; return; }
+      chkAll.checked = ids.every(id => !!ui.check[id]);
+    }
+
+    function applyFilter(){
+      const q = (qEl ? qEl.value : "").trim().toLowerCase();
+      let items = all.slice();
+
+      if (showCatTabs){
+        const subOf = (m)=> String(m.subject || "");
+        if (ui.cat === "checklist"){
+          items = items.filter(m => subOf(m).includes("[체크리스트 자료]"));
+        } else if (ui.cat === "deliver"){
+          items = items.filter(m => subOf(m).includes("_납품") || subOf(m).includes("납품"));
+        } else {
+          items = items.filter(m => {
+            const s = subOf(m);
+            return !(s.includes("[체크리스트 자료]") || s.includes("_납품") || s.includes("납품"));
+          });
+        }
+      }
+
+      if (box === "starred"){
+        items = items.filter(m => !!ui.star[m.mailId]);
+      }
+
+      if (q){
+        items = items.filter(m=>{
+          const s = `${m.from||""} ${m.subject||""} ${m.at||""}`.toLowerCase();
+          return s.includes(q);
+        });
+      }
+
+      filteredCache = items;
+      renderRows(items);
+    }
+
+    if (qEl){
+      qEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") applyFilter(); });
+      qEl.addEventListener("input", ()=> applyFilter());
+    }
+
+    if (chkAll){
+      chkAll.addEventListener("change", ()=>{
+        const ids = (filteredCache || []).map(m => m.mailId).filter(Boolean);
+        ids.forEach(id => ui.check[id] = chkAll.checked);
+        saveUI();
+        applyFilter();
       });
     }
+
+    renderTabs();
+    applyFilter();
   }
 
-  els.view.appendChild(dom(`<div class="stack"></div>`));
-  $(".stack", els.view).appendChild(card);
-}
+  function viewBoard(db, sub){
+    if (!els.view) return;
+    els.view.innerHTML = "";
 
+    const boardKey = String(sub || "notice");
+    const labelMap = {
+      ceo:"CEO Message",
+      notice:"전사공지",
+      hr:"인사발령",
+      bid:"경조사",
+      orders:"수주소식",
+      minutes:"회의록",
+      weekly:"주간 프로젝트 진행사항",
+      manual:"매뉴얼",
+      gallery:"사진첩",
+      free:"자유게시판"
+    };
+    const title = `게시판 · ${labelMap[boardKey] || boardKey}`;
+    setRouteTitle(title);
+
+    const items = (db.boardPosts || [])
+      .filter(p => String(p.boardKey||"") === boardKey)
+      .slice()
+      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+
+    const card = dom(`
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">${escapeHtml(title)}</div>
+          <div class="badge">${items.length}건</div>
+        </div>
+        <div class="list"></div>
+      </div>
+    `);
+
+    const list = $(".list", card);
+    if (list){
+      if (!items.length){
+        list.appendChild(dom(`<div class="empty">표시할 게시물이 없습니다</div>`));
+      } else {
+        items.forEach(p=>{
+          list.appendChild(dom(`
+            <div class="list-item">
+              <div class="list-title">${escapeHtml(p.title || "")}</div>
+              <div class="list-sub">${escapeHtml(`${p.writer || "-"} · ${p.at || "-"}`)}</div>
+            </div>
+          `));
+        });
+      }
+    }
+
+    els.view.appendChild(dom(`<div class="stack"></div>`));
+    $(".stack", els.view).appendChild(card);
+  }
+
+  function viewEA(db, sub){
+    if (!els.view) return;
+    els.view.innerHTML = "";
+
+    const box = (sub === "ea-sent") ? "sent" : "inbox";
+    const label = (box === "sent") ? "보낸결재함" : "받은결재함";
+    const title = `전자결재 · ${label}`;
+    setRouteTitle(title);
+
+    const items = (db.approvals || [])
+      .filter(a => String(a.box||"") === box)
+      .slice()
+      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+
+    const card = dom(`
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">${escapeHtml(title)}</div>
+          <div class="badge">${items.length}건</div>
+        </div>
+        <div class="list"></div>
+      </div>
+    `);
+
+    const list = $(".list", card);
+    if (list){
+      if (!items.length){
+        list.appendChild(dom(`<div class="empty">표시할 결재 문서가 없습니다</div>`));
+      } else {
+        items.forEach(d=>{
+          const st = d.status ? ` · ${d.status}` : "";
+          list.appendChild(dom(`
+            <div class="list-item">
+              <div class="list-title">${escapeHtml(d.title || "")}</div>
+              <div class="list-sub">${escapeHtml(`${d.from || "-"} · ${d.at || "-"}${st}`)}</div>
+            </div>
+          `));
+        });
+      }
+    }
+
+    els.view.appendChild(dom(`<div class="stack"></div>`));
+    $(".stack", els.view).appendChild(card);
+  }
+
+  function viewSchedule(db, sub){
+    if (!els.view) return;
+    els.view.innerHTML = "";
+
+    const label = (sub === "vacation") ? "휴가관리" : "회사공식일정";
+    const title = `일정관리 · ${label}`;
+    setRouteTitle(title);
+
+    const items = (db.staffSchedules || [])
+      .slice()
+      .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
+      .slice(0, 50);
+
+    const card = dom(`
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">${escapeHtml(title)}</div>
+          <div class="badge">${items.length}건</div>
+        </div>
+        <div class="list"></div>
+      </div>
+    `);
+
+    const list = $(".list", card);
+    if (list){
+      if (!items.length){
+        list.appendChild(dom(`<div class="empty">표시할 일정이 없습니다</div>`));
+      } else {
+        items.forEach(e=>{
+          list.appendChild(dom(`
+            <div class="list-item">
+              <div class="list-title">${escapeHtml(`${e.type || "-"} · ${e.name || "-"}`)}</div>
+              <div class="list-sub">${escapeHtml(`${e.date || "-"} · ${e.note || ""}`.trim())}</div>
+            </div>
+          `));
+        });
+      }
+    }
+
+    els.view.appendChild(dom(`<div class="stack"></div>`));
+    $(".stack", els.view).appendChild(card);
+  }
 
   function viewWorkShortcut(){
     if (!els.view) return;
@@ -1267,37 +1296,31 @@ function viewSchedule(db, sub){
     setTimeout(() => document.body.classList.remove("routeChanging"), 160);
 
     const db = ensureDB();
-
     const { tab, page, raw } = parseHash();
     const t = resolveTopTab(tab);
 
-    // profile은 항상 렌더(“프로필 미표시” 방지)
     renderProfile(db);
-
-    // birthdayCard는 “대쉬보드에서만”
     renderBirthdayCard(db, t === "대쉬보드");
 
-    // 상단/메가 메뉴는 항상 유지(“대쉬보드만 보임” 방지)
     renderTopTabs();
     renderMegaMenu();
 
     if (t === "대쉬보드"){
       setActiveTopTab("");
-      renderSideMenu("대쉬보드"); // 비움
+      renderSideMenu("대쉬보드");
       setActiveSide("");
       viewDashboard(db);
-      if (els.badgePending){
-  els.badgePending.textContent = "";
-  els.badgePending.classList.add("hidden");
-}
 
+      if (els.badgePending){
+        els.badgePending.textContent = "";
+        els.badgePending.classList.add("hidden");
+      }
       return;
     }
 
     setActiveTopTab(t);
     renderSideMenu(t);
     setActiveSide(location.hash || raw);
-
 
     if (t === "전자메일"){
       viewMail(db, page);
@@ -1309,32 +1332,26 @@ function viewSchedule(db, sub){
     } else if (t === "일정관리"){
       viewSchedule(db, page);
     } else if (t === "업무관리"){
-      // ✅ 요구사항: 소메뉴는 shortcut만 (나머지 제거)
       if (page === "shortcut") viewWorkShortcut();
-      else {
-        // 어떤 값이 오든 shortcut로 보정
-        location.hash = "#업무관리/shortcut";
-      }
+      else location.hash = "#업무관리/shortcut";
     } else {
       location.hash = "#대쉬보드/home";
     }
 
-    // ✅ badgePending은 대쉬보드에서만 표시 (다른 탭에서는 숨김)
-if (els.badgePending){
-  const n = (db.approvals||[]).filter(x=>x.box==="inbox").length;
-  if (t === "대쉬보드"){
-    els.badgePending.textContent = String(n);
-    els.badgePending.classList.remove("hidden");
-  } else {
-    els.badgePending.textContent = "";
-    els.badgePending.classList.add("hidden");
-  }
-}
-
+    if (els.badgePending){
+      const n = (db.approvals||[]).filter(x=>x.box==="inbox").length;
+      if (t === "대쉬보드"){
+        els.badgePending.textContent = String(n);
+        els.badgePending.classList.remove("hidden");
+      } else {
+        els.badgePending.textContent = "";
+        els.badgePending.classList.add("hidden");
+      }
+    }
   }
 
   /***********************
-   * App2 open (업무관리 별도창)
+   * App2 open
    ***********************/
   function openApp2(){
     const w = window.open("app2.html", "CONCOST_WORK", "width=1400,height=900");
@@ -1350,7 +1367,6 @@ if (els.badgePending){
     applyScrollFix();
     ensureDB();
 
-    // modal wiring (있으면)
     if (els.modalClose) els.modalClose.addEventListener("click", modalClose);
     if (els.modalBackdrop){
       els.modalBackdrop.addEventListener("click", (e)=>{
@@ -1366,7 +1382,6 @@ if (els.badgePending){
     }
 
     window.addEventListener("hashchange", ()=>{
-      // 해시가 바뀌면 메가메뉴 닫기 + 라우트
       closeMega();
       route();
     });
