@@ -427,3 +427,91 @@ body{
 }
 
 
+/* =========================
+   Sidebar Nav (도형 없이 리스트형)
+========================= */
+
+/* 기존 버튼 도형감 최소화 */
+.sideItem2{ border:0; background:transparent; box-shadow:none; padding:0; }
+.sideItem2.active{ box-shadow:none; }
+
+/* 그룹 헤더(대분류) */
+.navGroup2{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+
+  border:0;
+  background:transparent;
+  padding: 10px 12px;
+  cursor:pointer;
+
+  font-weight: 1000;
+  color: var(--ink);
+}
+.navGroup2:hover{
+  background: rgba(0,0,0,.03);
+  border-radius: 12px;
+}
+
+.sgTitle2{ font-weight: 1000; }
+.sgChevron2{ color: var(--muted); font-weight: 1000; }
+
+/* 서브메뉴 리스트 */
+.sideGroupList2{
+  padding: 2px 0 10px 22px; /* 들여쓰기 */
+}
+.sideGroupList2.hidden{ display:none; }
+
+/* 항목(서브/홈 공용) */
+.navItem2{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  border:0;
+  background:transparent;
+  padding: 9px 12px;
+  cursor:pointer;
+
+  text-align:left;
+  font-weight: 900;
+  color: var(--ink);
+  border-radius: 12px;
+}
+.navItem2:hover{
+  background: rgba(0,0,0,.03);
+}
+
+/* 활성표시: 왼쪽 얇은 바 + 은은한 배경 */
+.navItem2.active{
+  background: rgba(58,122,254,.10);
+  position: relative;
+}
+.navItem2.active::before{
+  content:"";
+  position:absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* 홈(최상단)만 살짝 강조 */
+.navItem2.top{
+  font-weight: 1100;
+  padding: 10px 12px;
+}
+
+/* 사이드 메뉴 카드 안의 여백 재조정 */
+.sideMenu2{
+  padding: 8px 8px 10px;
+  gap: 2px;
+}
+
+
