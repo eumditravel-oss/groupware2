@@ -1,4 +1,4 @@
-/* app2.js (업무관리 대시보드 = 이미지 구성 "홈" 추가) */
+/* app2.js (UPDATED) */
 (() => {
   "use strict";
 
@@ -92,11 +92,12 @@
   function ensureDB(){
     const db = loadDB();
     if (db && typeof db === "object") {
-      // 신규 필드 방어(기존 데이터 깨지지 않게)
       if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
       if (!Array.isArray(db.tasks)) db.tasks = [];
       if (!Array.isArray(db.messages)) db.messages = [];
-      if (!Array.isArray(db.approvals)) db.approvals = []; // (필요 시 확장)
+      if (!Array.isArray(db.approvals)) db.approvals = [];
+      // ✅ 게시판 데이터(신설)
+      if (!db.boards || typeof db.boards !== "object") db.boards = {};
       return db;
     }
 
@@ -106,7 +107,6 @@
       projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
       logs: [],
       checklists: [],
-      // 홈 대시보드용
       sharedFiles: [
         { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
         { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
@@ -118,7 +118,21 @@
         { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
         { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
       ],
-      messages: []
+      messages: [],
+      // ✅ 게시판 시드
+      boards: {
+        "work-standards": [
+          { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
+        ],
+        "mgmt-plan": [],
+        "mgmt-pt": [],
+        "struct-estimate-write": [],
+        "struct-estimate-manage": [],
+        "civil-estimate-write": [],
+        "civil-estimate-manage": [],
+        "finish-estimate-write": [],
+        "finish-estimate-manage": []
+      }
     };
     localStorage.setItem(LS_KEY, JSON.stringify(seed));
     return seed;
@@ -171,22 +185,75 @@
   function modalClose(){ $("#modal2").classList.add("hidden"); }
 
   /***********************
-   * Routes (업무관리 전용)
+   * Menu Model (요청 반영)
    ***********************/
-  const SIDE2 = [
-    { key:"home",           label:"대시보드" },          // ✅ 추가(이미지 구성)
-    { key:"log",            label:"업무일지" },
-    { key:"approve",        label:"승인" },
-    { key:"dashboard",      label:"프로젝트 소요시간" },
-    { key:"calendar",       label:"종합 공정관리" },
-    { key:"checklist",      label:"프로젝트별 체크리스트" },
-    { key:"checklist-view", label:"체크리스트 목록" }
+  const MENU = [
+    {
+      groupId: "home",
+      label: "홈 화면",
+      items: [
+        { key:"home", label:"대시보드", type:"route" }
+      ]
+    },
+    {
+      groupId: "work",
+      label: "업무관리",
+      items: [
+        { key:"work-standards", label:"건설사별 기준서", type:"board" }, // ✅ 신설(게시판)
+        { key:"work-log", label:"업무일지", type:"route" },
+        { key:"work-approve", label:"업무일지 승인", type:"route" },
+        { key:"work-time", label:"프로젝트 소요시간", type:"route" },
+        { key:"work-schedule", label:"종합 공정관리", type:"route" }
+      ]
+    },
+    {
+      groupId: "mgmt",
+      label: "경영지원팀",
+      items: [
+        { key:"mgmt-plan", label:"기획안 제출", type:"board" },       // ✅ 신설(게시판)
+        { key:"mgmt-pt", label:"PT자료 관리", type:"board" }          // ✅ 신설(게시판)
+      ]
+    },
+    {
+      groupId: "struct",
+      label: "구조팀",
+      items: [
+        { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
+        { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
+        { key:"struct-estimate-write", label:"견적조건 작성", type:"board" },   // ✅ 신설(게시판)
+        { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" }   // ✅ 신설(게시판)
+      ]
+    },
+    {
+      groupId: "civil",
+      label: "토목ㆍ조경팀",
+      items: [
+        { key:"civil-checklist", label:"프로젝트별 체크리스트", type:"route" },
+        { key:"civil-checklist-list", label:"체크리스트 목록", type:"route" },
+        { key:"civil-estimate-write", label:"견적조건 작성", type:"board" },    // ✅ 신설(게시판)
+        { key:"civil-estimate-manage", label:"견적조건 관리", type:"board" }    // ✅ 신설(게시판)
+      ]
+    },
+    {
+      groupId: "finish",
+      label: "마감팀",
+      items: [
+        { key:"finish-checklist", label:"프로젝트별 체크리스트", type:"route" },
+        { key:"finish-checklist-list", label:"체크리스트 목록", type:"route" },
+        { key:"finish-estimate-write", label:"견적조건 작성", type:"board" },   // ✅ 신설(게시판)
+        { key:"finish-estimate-manage", label:"견적조건 관리", type:"board" }   // ✅ 신설(게시판)
+      ]
+    }
   ];
+
+  // ✅ 그룹 기본 펼침 상태(이미지 느낌: 첫 그룹은 펼침)
+  const DEFAULT_OPEN_GROUPS = new Set(["home","work"]);
 
   function parseHash(){
     const raw = (location.hash || "").replace(/^#/, "");
     const key = decodeURIComponent(raw || "home");
-    return SIDE2.some(x=>x.key===key) ? key : "home";
+    const allKeys = new Set(MENU.flatMap(g => g.items.map(i => i.key)));
+    return allKeys.has(key) ? key : "home";
   }
   function setHash(key){ location.hash = `#${encodeURIComponent(key)}`; }
 
@@ -195,32 +262,77 @@
     if (t) t.textContent = text || "";
   }
 
-  function allowedWorkRoutesFor(user){
-    // staff도 홈은 사용 가능
-    if (isStaff(user)) return new Set(["home","log","checklist-view"]);
-    return new Set(["home","log","approve","dashboard","calendar","checklist","checklist-view"]);
+  // ✅ 기존 권한 로직은 유지(승인/체크리스트 작성은 staff 숨김)
+  function allowedKeysFor(user){
+    const all = new Set(MENU.flatMap(g => g.items.map(i => i.key)));
+    if (!isStaff(user)) return all;
+
+    // staff 제한(원래 정책 유지 + 게시판/목록은 허용)
+    const denied = new Set([
+      "work-approve",
+      "struct-checklist","civil-checklist","finish-checklist"
+    ]);
+    for (const k of denied) all.delete(k);
+    return all;
   }
 
   function renderSide2(db){
     const host = $("#sideMenu2");
     host.innerHTML = "";
+
     const cur = parseHash();
     const me = userById(db, getUserId(db));
-    const allowed = allowedWorkRoutesFor(me);
+    const allowed = allowedKeysFor(me);
 
-    SIDE2.forEach(m=>{
-      if (!allowed.has(m.key)) return;
-      host.appendChild(
-        el("button", {
-          class:`sideItem2 ${cur===m.key ? "active" : ""}`,
-          onclick:()=> setHash(m.key)
-        }, m.label)
+    // 그룹 열림 상태(로컬 유지)
+    const openState = safeParse(localStorage.getItem("APP2_SIDE_OPEN") || "", null) || {};
+    function isOpen(groupId){
+      if (openState[groupId] === true) return true;
+      if (openState[groupId] === false) return false;
+      return DEFAULT_OPEN_GROUPS.has(groupId);
+    }
+    function setOpen(groupId, v){
+      openState[groupId] = !!v;
+      localStorage.setItem("APP2_SIDE_OPEN", JSON.stringify(openState));
+    }
+
+    MENU.forEach(group => {
+      // 그룹 내 허용 항목이 하나도 없으면 그룹도 숨김
+      const visibleItems = group.items.filter(it => allowed.has(it.key));
+      if (!visibleItems.length) return;
+
+      const opened = isOpen(group.groupId);
+
+      const head = el("button", {
+        class:`sideGroupHead2 ${opened ? "open" : ""}`,
+        onclick:()=>{
+          const next = !isOpen(group.groupId);
+          setOpen(group.groupId, next);
+          renderSide2(db);
+        }
+      },
+        el("span", { class:"sgTitle2" }, group.label),
+        el("span", { class:"sgChevron2", "aria-hidden":"true" }, opened ? "▾" : "▸")
       );
+
+      const list = el("div", { class:`sideGroupList2 ${opened ? "" : "hidden"}` });
+
+      visibleItems.forEach(it=>{
+        list.appendChild(
+          el("button", {
+            class:`sideItem2 sub ${cur===it.key ? "active" : ""}`,
+            onclick:()=> setHash(it.key)
+          }, it.label)
+        );
+      });
+
+      host.appendChild(head);
+      host.appendChild(list);
     });
   }
 
   /***********************
-   * Aggregations
+   * Aggregations (기존)
    ***********************/
   function computeProjectDays(db, projectId){
     const set = new Set();
@@ -252,37 +364,7 @@
   }
 
   /***********************
-   * Control builders
-   ***********************/
-  function buildProjectSelect(db, value, onChange){
-    const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) });
-    for (const p of (db.projects||[])){
-      const o = el("option", { value:p.projectId }, `${p.projectCode} (${p.projectName})`);
-      if (p.projectId === value) o.selected = true;
-      s.appendChild(o);
-    }
-    return s;
-  }
-  function buildCategorySelect(value, onChange){
-    const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) },
-      el("option", { value:"구조" }, "구조"),
-      el("option", { value:"마감" }, "마감")
-    );
-    s.value = value;
-    return s;
-  }
-  function buildProcessSelect(category, value, onChange){
-    const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) });
-    for (const p of PROCESS_MASTER[category] || []){
-      const o = el("option", { value:p }, p);
-      if (p === value) o.selected = true;
-      s.appendChild(o);
-    }
-    return s;
-  }
-
-  /***********************
-   * Home (대시보드) - 이미지 구성
+   * Home (대시보드)
    ***********************/
   function computeKpis(db){
     const today = todayISO();
@@ -294,16 +376,9 @@
 
     const unread = Array.isArray(db.messages) ? db.messages.filter(m => m.read !== true).length : 0;
 
-    // 진행률(%) 예시: 승인 대기/전체 비율 (표시용)
     const progressRate = inProgress ? Math.round((logs.filter(l=>l.status==="approved").length / inProgress) * 100) : 0;
 
-    return {
-      todayMy,
-      inProgress,
-      unread,
-      approvalsWait,
-      progressRate
-    };
+    return { todayMy, inProgress, unread, approvalsWait, progressRate };
   }
 
   function kpiCard(label, value, badgeText){
@@ -319,11 +394,10 @@
   function viewHome(db){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("업무관리 · 대시보드");
+    setRouteTitle("홈 화면 · 대시보드");
 
     const k = computeKpis(db);
 
-    // KPI row
     const kpiGrid = el("div", { class:"kpiGrid" },
       kpiCard("오늘 업무일지", k.todayMy, ""),
       kpiCard("진행 중 업무", k.inProgress, `${k.progressRate}%`),
@@ -331,7 +405,6 @@
       kpiCard("대기 결재", k.approvalsWait, "")
     );
 
-    // 작업 파일 공유
     const files = Array.isArray(db.sharedFiles) ? db.sharedFiles : [];
     const filesTable = el("div", { class:"card2", style:"padding:0;" },
       el("div", { class:"card2-title", style:"display:flex;align-items:center;justify-content:space-between;" },
@@ -371,7 +444,6 @@
       )
     );
 
-    // 개별 진행 상황
     const tasks = Array.isArray(db.tasks) ? db.tasks : [];
     const progressCard = el("div", { class:"card2", style:"padding:0;" },
       el("div", { class:"card2-title" }, "개별 진행 상황"),
@@ -403,17 +475,111 @@
   }
 
   /***********************
-   * VIEWS (기존)
+   * 게시판(신설 폴더/탭) - 구성만 (간단 CRUD)
+   ***********************/
+  function ensureBoard(db, boardKey){
+    if (!db.boards || typeof db.boards !== "object") db.boards = {};
+    if (!Array.isArray(db.boards[boardKey])) db.boards[boardKey] = [];
+    return db.boards[boardKey];
+  }
+
+  function viewBoard(db, boardKey, title){
+    const view = $("#view2");
+    view.innerHTML = "";
+    setRouteTitle(title);
+
+    const me = userById(db, getUserId(db));
+    const list = ensureBoard(db, boardKey);
+
+    const top = el("div", { class:"card2", style:"padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;" },
+      el("div", {},
+        el("div", { style:"font-weight:1100;" }, title),
+        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" }, "게시판 형태로 구성만 적용(추후 파일 업로드/권한/검색 확장 가능)")
+      ),
+      el("button", {
+        class:"btn2 primary2",
+        onclick:()=>{
+          const t = prompt("제목");
+          if (!t || !t.trim()) return;
+          const b = prompt("내용(간단)") || "";
+          list.unshift({ postId: uuid(), title: t.trim(), author: me?.name || "-", createdAt: nowISO(), body: b });
+          saveDB(db);
+          render();
+        }
+      }, "새 글")
+    );
+
+    const rows = list.slice(0, 30).map(p=>{
+      const openBtn = el("button", {
+        class:"btn2 ghost2",
+        onclick:()=>{
+          modalOpen(p.title, el("div", {},
+            el("div", { class:"muted2", style:"padding:0 0 10px 0;" }, `${p.author || "-"} · ${p.createdAt || "-"}`),
+            el("div", { style:"white-space:pre-wrap;font-weight:900;line-height:1.5;" }, p.body || "")
+          ));
+        }
+      }, "보기");
+
+      return el("div", { class:"boardRow2" },
+        el("div", { class:"boardTitle2" }, p.title || "-"),
+        el("div", { class:"boardMeta2" }, `${p.author || "-"} · ${p.createdAt || "-"}`),
+        el("div", { style:"display:flex;justify-content:flex-end;" }, openBtn)
+      );
+    });
+
+    const empty = el("div", { class:"card2", style:"padding:14px;color:var(--muted);font-weight:900;" }, "등록된 글이 없습니다.");
+
+    view.appendChild(top);
+    view.appendChild(
+      el("div", { class:"card2", style:"padding:12px 14px;" },
+        el("div", { style:"display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;" },
+          el("div", { style:"font-weight:1100;" }, "목록"),
+          el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, `총 ${list.length}건`)
+        ),
+        list.length ? el("div", { class:"boardList2" }, ...rows) : empty
+      )
+    );
+  }
+
+  /***********************
+   * 기존 뷰(업무일지/승인/소요시간/공정관리/체크리스트)
    ***********************/
   function makeEmptyEntry(db){
     const p = db.projects?.[0]?.projectId || "";
     return { projectId: p, category:"구조", process: PROCESS_MASTER["구조"][0], ratio:50, content:"" };
   }
 
+  function buildProjectSelect(db, value, onChange){
+    const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) });
+    for (const p of (db.projects||[])){
+      const o = el("option", { value:p.projectId }, `${p.projectCode} (${p.projectName})`);
+      if (p.projectId === value) o.selected = true;
+      s.appendChild(o);
+    }
+    return s;
+  }
+  function buildCategorySelect(value, onChange){
+    const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) },
+      el("option", { value:"구조" }, "구조"),
+      el("option", { value:"마감" }, "마감")
+    );
+    s.value = value;
+    return s;
+  }
+  function buildProcessSelect(category, value, onChange){
+    const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) });
+    for (const p of PROCESS_MASTER[category] || []){
+      const o = el("option", { value:p }, p);
+      if (p === value) o.selected = true;
+      s.appendChild(o);
+    }
+    return s;
+  }
+
   function viewLog(db){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("업무일지");
+    setRouteTitle("업무관리 · 업무일지");
 
     const uid = getUserId(db);
     const dateInput = el("input", { class:"btn2", type:"date", value: todayISO() });
@@ -460,7 +626,7 @@
 
       return el("div", { class:"card2", style:"padding:12px 14px;" },
         el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
-          el("div", { style:"font-weight:1000;" }, `업무 항목 ${idx+1}`),
+          el("div", { style:"font-weight:1100;" }, `업무 항목 ${idx+1}`),
           delBtn
         ),
         el("div", { style:"display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;" },
@@ -519,7 +685,7 @@
     view.appendChild(
       el("div", { class:"card2", style:"padding:12px 14px;" },
         el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
-          el("div", { style:"font-weight:1000;" }, "업무일지 작성"),
+          el("div", { style:"font-weight:1100;" }, "업무일지 작성"),
           addBtn
         ),
         el("div", { style:"display:flex;gap:10px;align-items:center;margin-bottom:10px;" },
@@ -537,7 +703,7 @@
   function viewApprove(db){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("승인");
+    setRouteTitle("업무관리 · 업무일지 승인");
 
     const uid = getUserId(db);
     const submitted = (db.logs||[]).filter(l => l.status === "submitted")
@@ -597,8 +763,8 @@
         ...arr.map(l=>{
           const p = projById(db, l.projectId);
           return el("div", { style:"border:1px solid var(--line);border-radius:12px;padding:10px;" },
-            el("div", { style:"font-weight:1000;" }, `${p?.projectName||"프로젝트"} · ${l.category}/${l.process} · ${l.ratio}%`),
-            el("div", { style:"color:var(--muted);font-size:12px;margin-top:4px;" }, l.content)
+            el("div", { style:"font-weight:1100;" }, `${p?.projectName||"프로젝트"} · ${l.category}/${l.process} · ${l.ratio}%`),
+            el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" }, l.content)
           );
         })
       );
@@ -606,7 +772,7 @@
       view.appendChild(
         el("div", { class:"card2", style:"padding:12px 14px;" },
           el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;" },
-            el("div", { style:"font-weight:1000;" }, `승인 대기: ${writer?.name||"작성자"} · ${date} (${arr.length}건)`),
+            el("div", { style:"font-weight:1100;" }, `승인 대기: ${writer?.name||"작성자"} · ${date} (${arr.length}건)`),
             el("div", { style:"display:flex;gap:8px;" }, rejectBtn, approveBtn)
           ),
           list
@@ -618,7 +784,7 @@
   function viewDashboard(db){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("프로젝트 소요시간");
+    setRouteTitle("업무관리 · 프로젝트 소요시간");
 
     const projects = db.projects || [];
     const stats = projects.map(p=>{
@@ -633,7 +799,7 @@
       return;
     }
 
-    let selected = stats[0].projectId;
+    const selected = stats[0].projectId;
     const sp = projById(db, selected);
 
     const breakdown = computeProjectBreakdown(db, selected);
@@ -641,16 +807,16 @@
 
     view.appendChild(
       el("div", { class:"card2", style:"padding:12px 14px;" },
-        el("div", { style:"font-weight:1000;margin-bottom:10px;" }, `Selected: ${sp?.projectName||"-"}`),
+        el("div", { style:"font-weight:1100;margin-bottom:10px;" }, `Selected: ${sp?.projectName||"-"}`),
         rows.length ? el("div", { style:"display:flex;flex-direction:column;gap:8px;" },
           ...rows.map(([k,v])=>{
             const [cat, proc] = k.split("||");
             return el("div", { style:"border:1px solid var(--line);border-radius:12px;padding:10px;" },
-              el("div", { style:"font-weight:1000;" }, `${cat} · ${proc}`),
-              el("div", { style:"color:var(--muted);font-size:12px;margin-top:4px;" }, `${v}%`)
+              el("div", { style:"font-weight:1100;" }, `${cat} · ${proc}`),
+              el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" }, `${v}%`)
             );
           })
-        ) : el("div", { style:"color:var(--muted);" }, "승인된 업무일지가 없습니다.")
+        ) : el("div", { style:"color:var(--muted);font-weight:900;" }, "승인된 업무일지가 없습니다.")
       )
     );
   }
@@ -658,58 +824,88 @@
   function viewWorkCalendar(db){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("종합 공정관리");
+    setRouteTitle("업무관리 · 종합 공정관리");
     view.appendChild(
       el("div", { class:"card2", style:"padding:14px;" },
-        el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "캘린더(placeholder)"),
-        el("div", { style:"color:var(--muted);font-size:12px;" }, "요청 시 캘린더 UI 전체를 이 파일로 이관해 동일 구성으로 확장합니다.")
+        el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "캘린더(placeholder)"),
+        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "요청 시 캘린더 UI를 확장합니다.")
       )
     );
   }
 
-  function viewChecklist(db){
+  function viewChecklist(db, teamLabel){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("프로젝트별 체크리스트");
+    setRouteTitle(`${teamLabel} · 프로젝트별 체크리스트`);
 
     const uid = getUserId(db);
     const me = userById(db, uid);
     if (!isLeaderPlus(me)){
-      setHash("checklist-view");
+      toast("작성 권한(Leader+)이 필요합니다.");
       return;
     }
 
     db.checklists = Array.isArray(db.checklists) ? db.checklists : [];
     view.appendChild(
       el("div", { class:"card2", style:"padding:14px;" },
-        el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "체크리스트(Leader+ 작성)"),
-        el("div", { style:"color:var(--muted);font-size:12px;" }, "필요 시 기존 체크리스트 로직을 그대로 이관해 동일 기능으로 맞춥니다.")
+        el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "체크리스트(placeholder)"),
+        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "필요 시 기존 체크리스트 로직을 이관해 동일 기능으로 맞춥니다.")
       )
     );
   }
 
-  function viewChecklistView(db){
+  function viewChecklistList(db, teamLabel){
     const view = $("#view2");
     view.innerHTML = "";
-    setRouteTitle("체크리스트 목록");
+    setRouteTitle(`${teamLabel} · 체크리스트 목록`);
     view.appendChild(
       el("div", { class:"card2", style:"padding:14px;" },
-        el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "체크리스트 목록"),
-        el("div", { style:"color:var(--muted);font-size:12px;" }, "필요 시 목록/확인 기능을 동일하게 확장합니다.")
+        el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "체크리스트 목록(placeholder)"),
+        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "필요 시 목록/확인 기능을 확장합니다.")
       )
     );
   }
 
+  /***********************
+   * Router
+   ***********************/
   function renderView(db){
     const key = parseHash();
-    if (key === "home") viewHome(db);
-    else if (key === "log") viewLog(db);
-    else if (key === "approve") viewApprove(db);
-    else if (key === "dashboard") viewDashboard(db);
-    else if (key === "calendar") viewWorkCalendar(db);
-    else if (key === "checklist") viewChecklist(db);
-    else if (key === "checklist-view") viewChecklistView(db);
-    else viewHome(db);
+
+    // 홈
+    if (key === "home") return viewHome(db);
+
+    // 업무관리
+    if (key === "work-standards") return viewBoard(db, "work-standards", "업무관리 · 건설사별 기준서");
+    if (key === "work-log") return viewLog(db);
+    if (key === "work-approve") return viewApprove(db);
+    if (key === "work-time") return viewDashboard(db);
+    if (key === "work-schedule") return viewWorkCalendar(db);
+
+    // 경영지원팀(게시판)
+    if (key === "mgmt-plan") return viewBoard(db, "mgmt-plan", "경영지원팀 · 기획안 제출");
+    if (key === "mgmt-pt") return viewBoard(db, "mgmt-pt", "경영지원팀 · PT자료 관리");
+
+    // 구조팀
+    if (key === "struct-checklist") return viewChecklist(db, "구조팀");
+    if (key === "struct-checklist-list") return viewChecklistList(db, "구조팀");
+    if (key === "struct-estimate-write") return viewBoard(db, "struct-estimate-write", "구조팀 · 견적조건 작성");
+    if (key === "struct-estimate-manage") return viewBoard(db, "struct-estimate-manage", "구조팀 · 견적조건 관리");
+
+    // 토목ㆍ조경팀
+    if (key === "civil-checklist") return viewChecklist(db, "토목ㆍ조경팀");
+    if (key === "civil-checklist-list") return viewChecklistList(db, "토목ㆍ조경팀");
+    if (key === "civil-estimate-write") return viewBoard(db, "civil-estimate-write", "토목ㆍ조경팀 · 견적조건 작성");
+    if (key === "civil-estimate-manage") return viewBoard(db, "civil-estimate-manage", "토목ㆍ조경팀 · 견적조건 관리");
+
+    // 마감팀
+    if (key === "finish-checklist") return viewChecklist(db, "마감팀");
+    if (key === "finish-checklist-list") return viewChecklistList(db, "마감팀");
+    if (key === "finish-estimate-write") return viewBoard(db, "finish-estimate-write", "마감팀 · 견적조건 작성");
+    if (key === "finish-estimate-manage") return viewBoard(db, "finish-estimate-manage", "마감팀 · 견적조건 관리");
+
+    // fallback
+    viewHome(db);
   }
 
   function render(){
@@ -721,10 +917,10 @@
 
     renderSide2(db);
 
-    const allowed = allowedWorkRoutesFor(me);
+    const allowed = allowedKeysFor(me);
     const cur = parseHash();
     if (!allowed.has(cur)){
-      setHash(isStaff(me) ? "home" : "home");
+      setHash("home");
       return;
     }
 
@@ -732,10 +928,10 @@
   }
 
   function boot(){
-   $("#btnClose")?.addEventListener("click", ()=>{
-  if (window.opener) window.close();
-  else location.href = "./index.html"; // 또는 원하는 복귀 페이지
-});
+    $("#btnClose")?.addEventListener("click", ()=>{
+      if (window.opener) window.close();
+      else location.href = "./index.html";
+    });
 
     $("#modal2Close")?.addEventListener("click", modalClose);
     $("#modal2")?.addEventListener("click", (e)=>{ if (e.target === $("#modal2")) modalClose(); });
