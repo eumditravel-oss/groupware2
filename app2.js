@@ -185,151 +185,174 @@
   function modalClose(){ $("#modal2").classList.add("hidden"); }
 
   /***********************
-   * Menu Model (요청 반영)
-   ***********************/
-  const MENU = [
-    {
-      groupId: "home",
-      label: "홈 화면",
-      items: [
-        { key:"home", label:"대시보드", type:"route" }
-      ]
-    },
-    {
-      groupId: "work",
-      label: "업무관리",
-      items: [
-        { key:"work-standards", label:"건설사별 기준서", type:"board" }, // ✅ 신설(게시판)
-        { key:"work-log", label:"업무일지", type:"route" },
-        { key:"work-approve", label:"업무일지 승인", type:"route" },
-        { key:"work-time", label:"프로젝트 소요시간", type:"route" },
-        { key:"work-schedule", label:"종합 공정관리", type:"route" }
-      ]
-    },
-    {
-      groupId: "mgmt",
-      label: "경영지원팀",
-      items: [
-        { key:"mgmt-plan", label:"기획안 제출", type:"board" },       // ✅ 신설(게시판)
-        { key:"mgmt-pt", label:"PT자료 관리", type:"board" }          // ✅ 신설(게시판)
-      ]
-    },
-    {
-      groupId: "struct",
-      label: "구조팀",
-      items: [
-        { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
-        { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
-        { key:"struct-estimate-write", label:"견적조건 작성", type:"board" },   // ✅ 신설(게시판)
-        { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" }   // ✅ 신설(게시판)
-      ]
-    },
-    {
-      groupId: "civil",
-      label: "토목ㆍ조경팀",
-      items: [
-        { key:"civil-checklist", label:"프로젝트별 체크리스트", type:"route" },
-        { key:"civil-checklist-list", label:"체크리스트 목록", type:"route" },
-        { key:"civil-estimate-write", label:"견적조건 작성", type:"board" },    // ✅ 신설(게시판)
-        { key:"civil-estimate-manage", label:"견적조건 관리", type:"board" }    // ✅ 신설(게시판)
-      ]
-    },
-    {
-      groupId: "finish",
-      label: "마감팀",
-      items: [
-        { key:"finish-checklist", label:"프로젝트별 체크리스트", type:"route" },
-        { key:"finish-checklist-list", label:"체크리스트 목록", type:"route" },
-        { key:"finish-estimate-write", label:"견적조건 작성", type:"board" },   // ✅ 신설(게시판)
-        { key:"finish-estimate-manage", label:"견적조건 관리", type:"board" }   // ✅ 신설(게시판)
-      ]
-    }
-  ];
+ * Menu Model (홈화면=대시보드)
+ ***********************/
+const MENU = [
+  // ✅ 홈화면 = 대시보드(단일 항목)
+  { key:"home", label:"홈화면", kind:"single", type:"route" },
 
-  // ✅ 그룹 기본 펼침 상태(이미지 느낌: 첫 그룹은 펼침)
-  const DEFAULT_OPEN_GROUPS = new Set(["home","work"]);
-
-  function parseHash(){
-    const raw = (location.hash || "").replace(/^#/, "");
-    const key = decodeURIComponent(raw || "home");
-    const allKeys = new Set(MENU.flatMap(g => g.items.map(i => i.key)));
-    return allKeys.has(key) ? key : "home";
+  // ✅ 이하 대분류(그룹) + 하위
+  {
+    groupId: "work",
+    label: "업무관리",
+    kind: "group",
+    items: [
+      { key:"work-standards", label:"건설사별 기준서", type:"board" },
+      { key:"work-log", label:"업무일지", type:"route" },
+      { key:"work-approve", label:"업무일지 승인", type:"route" },
+      { key:"work-time", label:"프로젝트 소요시간", type:"route" },
+      { key:"work-schedule", label:"종합 공정관리", type:"route" }
+    ]
+  },
+  {
+    groupId: "mgmt",
+    label: "경영지원팀",
+    kind: "group",
+    items: [
+      { key:"mgmt-plan", label:"기획안 제출", type:"board" },
+      { key:"mgmt-pt", label:"PT자료 관리", type:"board" }
+    ]
+  },
+  {
+    groupId: "struct",
+    label: "구조팀",
+    kind: "group",
+    items: [
+      { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
+      { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
+      { key:"struct-estimate-write", label:"견적조건 작성", type:"board" },
+      { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" }
+    ]
+  },
+  {
+    groupId: "civil",
+    label: "토목ㆍ조경팀",
+    kind: "group",
+    items: [
+      { key:"civil-checklist", label:"프로젝트별 체크리스트", type:"route" },
+      { key:"civil-checklist-list", label:"체크리스트 목록", type:"route" },
+      { key:"civil-estimate-write", label:"견적조건 작성", type:"board" },
+      { key:"civil-estimate-manage", label:"견적조건 관리", type:"board" }
+    ]
+  },
+  {
+    groupId: "finish",
+    label: "마감팀",
+    kind: "group",
+    items: [
+      { key:"finish-checklist", label:"프로젝트별 체크리스트", type:"route" },
+      { key:"finish-checklist-list", label:"체크리스트 목록", type:"route" },
+      { key:"finish-estimate-write", label:"견적조건 작성", type:"board" },
+      { key:"finish-estimate-manage", label:"견적조건 관리", type:"board" }
+    ]
   }
-  function setHash(key){ location.hash = `#${encodeURIComponent(key)}`; }
+];
 
-  function setRouteTitle(text){
-    const t = $("#routeTitle2");
-    if (t) t.textContent = text || "";
+// ✅ 그룹 기본 펼침 상태
+const DEFAULT_OPEN_GROUPS = new Set(["work"]);
+
+function parseHash(){
+  const raw = (location.hash || "").replace(/^#/, "");
+  const key = decodeURIComponent(raw || "home");
+
+  const allKeys = new Set([
+    ...MENU.filter(x=>x.kind==="single").map(x=>x.key),
+    ...MENU.filter(x=>x.kind==="group").flatMap(g => g.items.map(i => i.key))
+  ]);
+
+  return allKeys.has(key) ? key : "home";
+}
+function setHash(key){ location.hash = `#${encodeURIComponent(key)}`; }
+
+// ✅ routeTitle 제거했으면 이 함수는 있어도 되고(호출 안하면 됨), 없어도 됨
+function setRouteTitle(text){
+  const t = $("#routeTitle2");
+  if (t) t.textContent = text || "";
+}
+
+// ✅ 기존 권한 로직 유지(승인/체크리스트 작성은 staff 숨김)
+function allowedKeysFor(user){
+  const all = new Set([
+    ...MENU.filter(x=>x.kind==="single").map(x=>x.key),
+    ...MENU.filter(x=>x.kind==="group").flatMap(g => g.items.map(i => i.key))
+  ]);
+
+  if (!isStaff(user)) return all;
+
+  const denied = new Set([
+    "work-approve",
+    "struct-checklist","civil-checklist","finish-checklist"
+  ]);
+  for (const k of denied) all.delete(k);
+  return all;
+}
+
+function renderSide2(db){
+  const host = $("#sideMenu2");
+  host.innerHTML = "";
+
+  const cur = parseHash();
+  const me = userById(db, getUserId(db));
+  const allowed = allowedKeysFor(me);
+
+  const openState = safeParse(localStorage.getItem("APP2_SIDE_OPEN") || "", null) || {};
+  function isOpen(groupId){
+    if (openState[groupId] === true) return true;
+    if (openState[groupId] === false) return false;
+    return DEFAULT_OPEN_GROUPS.has(groupId);
+  }
+  function setOpen(groupId, v){
+    openState[groupId] = !!v;
+    localStorage.setItem("APP2_SIDE_OPEN", JSON.stringify(openState));
   }
 
-  // ✅ 기존 권한 로직은 유지(승인/체크리스트 작성은 staff 숨김)
-  function allowedKeysFor(user){
-    const all = new Set(MENU.flatMap(g => g.items.map(i => i.key)));
-    if (!isStaff(user)) return all;
-
-    // staff 제한(원래 정책 유지 + 게시판/목록은 허용)
-    const denied = new Set([
-      "work-approve",
-      "struct-checklist","civil-checklist","finish-checklist"
-    ]);
-    for (const k of denied) all.delete(k);
-    return all;
+  // ✅ 1) 홈화면(단일 버튼)
+  const home = MENU.find(x=>x.kind==="single" && x.key==="home");
+  if (home && allowed.has("home")){
+    host.appendChild(
+      el("button", {
+        class:`sideItem2 ${cur==="home" ? "active" : ""}`,
+        onclick:()=> setHash("home")
+      }, home.label)
+    );
+    host.appendChild(el("div", { style:"height:8px;" }));
   }
 
-  function renderSide2(db){
-    const host = $("#sideMenu2");
-    host.innerHTML = "";
+  // ✅ 2) 그룹들
+  MENU.filter(x=>x.kind==="group").forEach(group=>{
+    const visibleItems = group.items.filter(it => allowed.has(it.key));
+    if (!visibleItems.length) return;
 
-    const cur = parseHash();
-    const me = userById(db, getUserId(db));
-    const allowed = allowedKeysFor(me);
+    const opened = isOpen(group.groupId);
 
-    // 그룹 열림 상태(로컬 유지)
-    const openState = safeParse(localStorage.getItem("APP2_SIDE_OPEN") || "", null) || {};
-    function isOpen(groupId){
-      if (openState[groupId] === true) return true;
-      if (openState[groupId] === false) return false;
-      return DEFAULT_OPEN_GROUPS.has(groupId);
-    }
-    function setOpen(groupId, v){
-      openState[groupId] = !!v;
-      localStorage.setItem("APP2_SIDE_OPEN", JSON.stringify(openState));
-    }
+    const head = el("button", {
+      class:`sideGroupHead2 ${opened ? "open" : ""}`,
+      onclick:()=>{
+        const next = !isOpen(group.groupId);
+        setOpen(group.groupId, next);
+        renderSide2(db);
+      }
+    },
+      el("span", { class:"sgTitle2" }, group.label),
+      el("span", { class:"sgChevron2", "aria-hidden":"true" }, opened ? "▾" : "▸")
+    );
 
-    MENU.forEach(group => {
-      // 그룹 내 허용 항목이 하나도 없으면 그룹도 숨김
-      const visibleItems = group.items.filter(it => allowed.has(it.key));
-      if (!visibleItems.length) return;
+    const list = el("div", { class:`sideGroupList2 ${opened ? "" : "hidden"}` });
 
-      const opened = isOpen(group.groupId);
-
-      const head = el("button", {
-        class:`sideGroupHead2 ${opened ? "open" : ""}`,
-        onclick:()=>{
-          const next = !isOpen(group.groupId);
-          setOpen(group.groupId, next);
-          renderSide2(db);
-        }
-      },
-        el("span", { class:"sgTitle2" }, group.label),
-        el("span", { class:"sgChevron2", "aria-hidden":"true" }, opened ? "▾" : "▸")
+    visibleItems.forEach(it=>{
+      list.appendChild(
+        el("button", {
+          class:`sideItem2 sub ${cur===it.key ? "active" : ""}`,
+          onclick:()=> setHash(it.key)
+        }, it.label)
       );
-
-      const list = el("div", { class:`sideGroupList2 ${opened ? "" : "hidden"}` });
-
-      visibleItems.forEach(it=>{
-        list.appendChild(
-          el("button", {
-            class:`sideItem2 sub ${cur===it.key ? "active" : ""}`,
-            onclick:()=> setHash(it.key)
-          }, it.label)
-        );
-      });
-
-      host.appendChild(head);
-      host.appendChild(list);
     });
-  }
+
+    host.appendChild(head);
+    host.appendChild(list);
+  });
+}
+
 
   /***********************
    * Aggregations (기존)
