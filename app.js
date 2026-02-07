@@ -475,24 +475,21 @@ const SIDE_MENUS = {
     { key:"ea-sent",  label:"보낸결재함", route:"#전자결재/ea-sent" },
     { key:"ea-write", label:"문서작성",   route:"#전자결재/ea-write" }
   ],
-
-  // ✅ 여기 변경
   "일정관리": [
     { key:"schedule", label:"일정관리", route:"#일정관리/home" }
   ],
-
-    "업무관리": [
+  "업무관리": [
     { key:"shortcut", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" },
     { key:"vendors",  label:"업체별 연락처 관리", route:"#업무관리/vendors" }
   ]
+}; // ✅ 이 닫는 줄이 없어서 function에서 터졌음
 
+function firstMenuRoute(tabKey){
+  if (tabKey === "대쉬보드") return "#대쉬보드/home";
+  const m = SIDE_MENUS[tabKey]?.[0];
+  return m?.route || "#대쉬보드/home";
+}
 
-
-  function firstMenuRoute(tabKey){
-    if (tabKey === "대쉬보드") return "#대쉬보드/home";
-    const m = SIDE_MENUS[tabKey]?.[0];
-    return m?.route || "#대쉬보드/home";
-  }
 
   /***********************
    * MegaMenu
@@ -2121,27 +2118,29 @@ function viewSchedule(db){
     setActiveSide(location.hash || raw);
 
     if (t === "전자메일"){
-      viewMail(db, page);
-    } else if (t === "게시판"){
-      viewBoard(db, page);
-    } else if (t === "전자결재"){
-      if (page === "ea-write") viewPlaceholder("전자결재 · 문서작성 (준비중)");
-      else viewEA(db, page);
-    /* =========================
- * (C) route() 내 일정관리 라우팅 (home으로 고정)
- * ========================= */
+  viewMail(db, page);
+
+} else if (t === "게시판"){
+  viewBoard(db, page);
+
+} else if (t === "전자결재"){
+  if (page === "ea-write") viewPlaceholder("전자결재 · 문서작성 (준비중)");
+  else viewEA(db, page);
+
 } else if (t === "일정관리"){
   // ✅ 어떤 page로 와도 home으로 정규화
   if (page !== "home") { location.hash = "#일정관리/home"; return; }
   viewSchedule(db);
+
+} else if (t === "업무관리"){
+  if (page === "shortcut") viewWorkShortcut();
+  else if (page === "vendors") viewVendors(db);
+  else location.hash = "#업무관리/shortcut";
+
+} else {
+  location.hash = "#대쉬보드/home";
 }
-     } else if (t === "업무관리"){
-      if (page === "shortcut") viewWorkShortcut();
-      else if (page === "vendors") viewVendors(db);
-      else location.hash = "#업무관리/shortcut";
-    } else {
-      location.hash = "#대쉬보드/home";
-    }
+
 
     if (els.badgePending){
       const n = (db.approvals||[]).filter(x=>x.box==="inbox").length;
