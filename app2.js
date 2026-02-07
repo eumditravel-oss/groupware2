@@ -597,7 +597,8 @@ function computeProjectTotalHours(db, projectId){
     );
   }
 
-  function viewProjectEditor(db){
+  /* ✅ REPLACE: viewProjectEditor(db) - FULL */
+function viewProjectEditor(db){
   const view = $("#view2");
   view.innerHTML = "";
   setRouteTitle("업무관리 · 프로젝트 작성");
@@ -611,17 +612,9 @@ function computeProjectTotalHours(db, projectId){
     return db.projects.find(p => p.projectId === id) || null;
   }
 
-  function inputRow(label, inputNode){
-    return el("div", { class:"wtPartRow2" },
-      el("div", { class:"wtPartK2" }, label),
-      el("div", { class:"wtPartV2" }, inputNode)
-    );
-  }
-
-  // 좌측: 프로젝트 목록
-  const left = el("div", { class:"card2", style:"padding:12px 14px;" });
-  const right = el("div", { class:"card2", style:"padding:12px 14px;" });
-  const body = el("div", { class:"wtLayout2" }, left, right);
+  // ✅ 레이아웃: 상단(상세) + 하단(리스트)
+  const detailCard = el("div", { class:"card2", style:"padding:12px 14px;" });
+  const listCard   = el("div", { class:"card2", style:"padding:12px 14px;margin-top:12px;" });
 
   const addBtn = el("button", {
     class:"btn2 primary2",
@@ -644,7 +637,7 @@ function computeProjectTotalHours(db, projectId){
       });
       saveDB(db);
       selectedId = id;
-      render(); // 메뉴/화면 갱신
+      render(); // 화면 갱신
     }
   }, "+ 새 프로젝트");
 
@@ -659,17 +652,18 @@ function computeProjectTotalHours(db, projectId){
   );
 
   view.appendChild(topBar);
-  view.appendChild(body);
+  view.appendChild(detailCard);
+  view.appendChild(listCard);
 
   function rerender(){
-    // ---- LEFT
-    left.innerHTML = "";
-    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+    // ----- LIST (하단)
+    listCard.innerHTML = "";
+    listCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
 
     if (!db.projects.length){
-      left.appendChild(el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n오른쪽 상단 ‘+ 새 프로젝트’로 추가하세요."));
-      right.innerHTML = "";
-      right.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 생성하면 편집 화면이 표시됩니다."));
+      listCard.appendChild(el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n상단 ‘+ 새 프로젝트’로 추가하세요."));
+      detailCard.innerHTML = "";
+      detailCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 생성하면 편집 화면이 표시됩니다."));
       return;
     }
 
@@ -688,12 +682,12 @@ function computeProjectTotalHours(db, projectId){
         )
       );
     });
-    left.appendChild(listHost);
+    listCard.appendChild(listHost);
 
-    // ---- RIGHT (EDITOR)
+    // ----- DETAIL (상단)
     const p = projByIdLocal(selectedId);
-    right.innerHTML = "";
-    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
+    detailCard.innerHTML = "";
+    detailCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
 
     const codeInput = el("input", { class:"btn2", type:"text", value: p.projectCode || p.projectId || "", placeholder:"프로젝트 코드" });
     const nameInput = el("input", { class:"btn2", type:"text", value: p.projectName || "", placeholder:"프로젝트 명칭" });
@@ -711,14 +705,12 @@ function computeProjectTotalHours(db, projectId){
         if (!newCode) return toast("프로젝트 코드는 필수입니다.");
         if (!newName) return toast("프로젝트 명칭은 필수입니다.");
 
-        // 코드 변경 시 중복 체크
         const dup = db.projects.some(x =>
           x.projectId !== p.projectId &&
           (x.projectId === newCode || x.projectCode === newCode)
         );
         if (dup) return toast("동일 코드가 이미 존재합니다.");
 
-        // 저장
         p.projectCode = newCode;
         p.projectName = newName;
         p.buildingUse = (useInput.value || "").trim();
@@ -727,7 +719,6 @@ function computeProjectTotalHours(db, projectId){
         p.startDate = sDate.value || "";
         p.endDate = eDate.value || "";
 
-        // projectId는 내부키이므로 여기서는 유지(코드 변경과 분리)
         saveDB(db);
         toast("저장 완료");
         render();
@@ -746,7 +737,7 @@ function computeProjectTotalHours(db, projectId){
       }
     }, "삭제");
 
-    right.appendChild(
+    detailCard.appendChild(
       el("div", { class:"stack" },
         el("div", { class:"card2", style:"padding:12px 14px;" },
           el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
@@ -769,6 +760,7 @@ function computeProjectTotalHours(db, projectId){
 
   rerender();
 }
+
 
 
   /***********************
@@ -1018,7 +1010,8 @@ function computeProjectTotalHours(db, projectId){
     }
   }
 
-  function viewDashboard(db){
+  /* ✅ REPLACE: viewDashboard(db) - FULL */
+function viewDashboard(db){
   const view = $("#view2");
   view.innerHTML = "";
   setRouteTitle("업무관리 · 프로젝트 소요시간");
@@ -1028,9 +1021,9 @@ function computeProjectTotalHours(db, projectId){
   // -----------------------
   const LS_SEL = "APP2_WORKTIME_SELECTED";
   const LS_Q   = "APP2_WORKTIME_QUERY";
-  
+
   let query = (localStorage.getItem(LS_Q) || "").trim();
-    let selectedId = (localStorage.getItem(LS_SEL) || "");
+  let selectedId = (localStorage.getItem(LS_SEL) || "");
 
   // -----------------------
   // helpers
@@ -1042,19 +1035,14 @@ function computeProjectTotalHours(db, projectId){
   function userName(uid){
     return (users.find(u => u.userId === uid)?.name) || uid || "-";
   }
-
   function uniq(arr){
     return Array.from(new Set(arr));
   }
-
   function projText(p){
     const code = p.projectCode || p.projectId || "";
     const name = p.projectName || "";
     return `${code} ${name}`.trim();
   }
-
-  
-
   function projectMatchesQuery(p){
     if (!query) return true;
     const t = (projText(p) || "").toLowerCase();
@@ -1072,13 +1060,7 @@ function computeProjectTotalHours(db, projectId){
     const peopleIds = uniq(partLogs.map(l => l.writerId).filter(Boolean));
     const peopleNames = peopleIds.map(userName);
 
-    // "작업일수"를 날짜 기준으로 보고(승인된 일지 날짜)
-    return {
-      part,
-      days,
-      headcount: peopleIds.length,
-      peopleNames
-    };
+    return { part, days, headcount: peopleIds.length, peopleNames };
   }
 
   function computeTotalDays(projectId){
@@ -1092,7 +1074,7 @@ function computeProjectTotalHours(db, projectId){
   }
 
   // -----------------------
-  // UI: Top controls (검색 + 필터)
+  // UI: Top controls (검색)
   // -----------------------
   const qInput = el("input", {
     class:"wtSearch2",
@@ -1106,69 +1088,48 @@ function computeProjectTotalHours(db, projectId){
     }
   });
 
-  function filterChip(label, value){
-    const active = (filter === value);
-    return el("button", {
-      class:`wtChip2 ${active ? "active" : ""}`,
-      onclick:()=>{
-        filter = value;
-        localStorage.setItem(LS_F, filter);
-        rerender();
-      }
-    }, label);
-  }
-
   const topBar = el("div", { class:"card2 wtTop2" },
-  el("div", { class:"wtTopRow2" },
-    qInput
-  )
-);
-
+    el("div", { class:"wtTopRow2" }, qInput)
+  );
 
   // -----------------------
-  // Layout containers
+  // Layout: 상단(상세) + 하단(리스트)
   // -----------------------
-  const left = el("div", { class:"card2 wtLeft2" });
-  const right = el("div", { class:"card2 wtRight2" });
-
-  const body = el("div", { class:"wtLayout2" }, left, right);
+  const detailCard = el("div", { class:"card2", style:"padding:12px 14px;" });
+  const listCard   = el("div", { class:"card2", style:"padding:12px 14px;margin-top:12px;" });
 
   view.appendChild(topBar);
-  view.appendChild(body);
+  view.appendChild(detailCard);
+  view.appendChild(listCard);
 
   // -----------------------
   // Render
   // -----------------------
   function rerender(){
-    // 1) list filtering
-    const list = projects
-  .filter(p => projectMatchesQuery(p));
-
+    const list = projects.filter(p => projectMatchesQuery(p));
 
     if (!list.length){
-      left.innerHTML = "";
-      right.innerHTML = "";
-      left.appendChild(el("div", { class:"wtEmpty2" }, "조건에 맞는 프로젝트가 없습니다."));
-      right.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하면 상세가 표시됩니다."));
+      listCard.innerHTML = "";
+      detailCard.innerHTML = "";
+      listCard.appendChild(el("div", { class:"wtEmpty2" }, "조건에 맞는 프로젝트가 없습니다."));
+      detailCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하면 상세가 표시됩니다."));
       return;
     }
 
-    // 2) selected
+    // selected
     selectedId = pickDefaultProjectId(list);
     localStorage.setItem(LS_SEL, selectedId);
 
-    // 3) render left list
-    left.innerHTML = "";
-    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+    // ----- LIST (하단)
+    listCard.innerHTML = "";
+    listCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
 
     const listHost = el("div", { class:"wtList2" });
     list.forEach(p=>{
       const active = (p.projectId === selectedId);
 
-      // 좌측 1줄 요약(필요하면 확장)
       const totalHours = computeProjectTotalHours(db, p.projectId);
-const totalDays  = computeProjectTotalDays(db, p.projectId);
-
+      const totalDays  = computeProjectTotalDays(db, p.projectId);
 
       listHost.appendChild(
         el("button", {
@@ -1180,18 +1141,17 @@ const totalDays  = computeProjectTotalDays(db, p.projectId);
           }
         },
           el("div", { class:"wtProjTitle2" }, projText(p) || "(무제)"),
-    el("div", { class:"wtProjMeta2" }, `총 투입시간: ${totalHours}시간 / 환산일수: ${totalDays}일`)
-  )
+          el("div", { class:"wtProjMeta2" }, `총 투입시간: ${totalHours}시간 / 환산일수: ${totalDays}일`)
+        )
       );
     });
-    left.appendChild(listHost);
+    listCard.appendChild(listHost);
 
-    // 4) render right detail
+    // ----- DETAIL (상단)
     const sp = projById(db, selectedId);
-    right.innerHTML = "";
-    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세"));
+    detailCard.innerHTML = "";
+    detailCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세"));
 
-    // 프로젝트 기본정보(없으면 "-"로)
     const use = sp?.buildingUse || sp?.use || sp?.purpose || "-";
     const area = sp?.grossArea || sp?.area || sp?.gfa || "-";
     const structure = sp?.structureType || sp?.structure || "-";
@@ -1215,18 +1175,15 @@ const totalDays  = computeProjectTotalDays(db, p.projectId);
       )
     );
 
-    // 파트별 통계(요구: 작업일수, 투입인원, 이름, 총 소요일수)
-    // 토목ㆍ조경 파트는 현재 로그에 category가 없을 수 있으니(데이터가 들어오면 자동 집계됨)
     const parts = ["구조","토목ㆍ조경","마감"];
     const partStats = parts.map(part => computePartStats(selectedId, part));
-    const totalDays = computeTotalDays(selectedId);
+    const totalDaysCalendar = computeTotalDays(selectedId);
 
     const table = el("div", { class:"wtDetailBody2" },
       el("div", { class:"wtTotal2" },
-        el("div", { class:"wtTotalLabel2" }, "프로젝트 총 소요일수"),
-        el("div", { class:"wtTotalVal2" }, `${totalDays}일`)
+        el("div", { class:"wtTotalLabel2" }, "프로젝트 총 소요일수(캘린더 기준)"),
+        el("div", { class:"wtTotalVal2" }, `${totalDaysCalendar}일`)
       ),
-
       el("div", { class:"wtPartGrid2" },
         ...partStats.map(s=>{
           const peopleLine = s.peopleNames.length ? s.peopleNames.join(", ") : "-";
@@ -1249,12 +1206,13 @@ const totalDays  = computeProjectTotalDays(db, p.projectId);
       )
     );
 
-    right.appendChild(header);
-    right.appendChild(table);
+    detailCard.appendChild(header);
+    detailCard.appendChild(table);
   }
 
   rerender();
 }
+
 
 
   function viewWorkCalendar(db){
