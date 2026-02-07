@@ -597,7 +597,7 @@ function computeProjectTotalHours(db, projectId){
     );
   }
 
-  /* ✅ REPLACE: viewProjectEditor(db) - FULL (상단 상세 / 하단 리스트) */
+  /* ✅ REPLACE: viewProjectEditor(db) - FULL (상단: 상세 / 하단: 리스트 + 우측 년도 드롭다운) */
 function viewProjectEditor(db){
   const view = $("#view2");
   view.innerHTML = "";
@@ -605,14 +605,59 @@ function viewProjectEditor(db){
 
   db.projects = Array.isArray(db.projects) ? db.projects : [];
 
-  // 선택(수정) 상태
-  let selectedId = db.projects[0]?.projectId || "";
+  // -----------------------
+  // state
+  // -----------------------
+  const LS_SEL  = "APP2_PROJECTEDITOR_SELECTED";
+  const LS_YEAR = "APP2_PROJECTEDITOR_YEAR";
+
+  let selectedId = (localStorage.getItem(LS_SEL) || db.projects[0]?.projectId || "");
+  let yearFilter = (localStorage.getItem(LS_YEAR) || "ALL");
 
   function projByIdLocal(id){
     return db.projects.find(p => p.projectId === id) || null;
   }
 
-  // ✅ 상단 바(설명 + 추가)
+  function projectYear(p){
+    const code = String(p.projectCode || p.projectId || "");
+    const y = code.slice(0,4);
+    return /^\d{4}$/.test(y) ? y : "";
+  }
+
+  function buildYearOptions(){
+    const set = new Set();
+    // DB에 있는 프로젝트에서 연도 수집
+    db.projects.forEach(p=>{
+      const y = projectYear(p);
+      if (y) set.add(y);
+    });
+
+    // 현재년도 기준 +/- 2도 추가(빈 화면 방지)
+    const cy = new Date().getFullYear();
+    for (let i=cy-2;i<=cy+2;i++) set.add(String(i));
+
+    return Array.from(set).sort((a,b)=>b.localeCompare(a)); // 최신년도 먼저
+  }
+
+  function buildYearSelect(value, onChange){
+    const years = buildYearOptions();
+    const s = el("select", {
+      class:"yearSelect2",
+      onchange:(e)=>onChange?.(e.target.value)
+    });
+
+    s.appendChild(el("option", { value:"ALL" }, "전체년도"));
+    years.forEach(y=>{
+      const o = el("option", { value:y }, `${y}년`);
+      if (y === value) o.selected = true;
+      s.appendChild(o);
+    });
+    return s;
+  }
+
+  // -----------------------
+  // Top bar (설명 + 우측 버튼)
+  // -----------------------
   const addBtn = el("button", {
     class:"btn2 primary2",
     onclick:()=>{
@@ -634,11 +679,15 @@ function viewProjectEditor(db){
       });
       saveDB(db);
       selectedId = id;
+      localStorage.setItem(LS_SEL, selectedId);
       render();
     }
   }, "+ 새 프로젝트");
 
-  const topBar = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;" },
+  const topBar = el("div", {
+    class:"card2",
+    style:"padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;"
+  },
     el("div", {},
       el("div", { style:"font-weight:1100;" }, "프로젝트 기본정보 작성/관리"),
       el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" },
@@ -648,8 +697,10 @@ function viewProjectEditor(db){
     addBtn
   );
 
-  // ✅ 본문 카드 2개: (상단) 상세 입력 / (하단) 리스트
-  const detailCard = el("div", { class:"card2", style:"padding:0;margin-bottom:12px;" });
+  // -----------------------
+  // Cards: 상단 상세 / 하단 리스트
+  // -----------------------
+  const detailCard = el("div", { class:"card2", style:"padding:0; margin-bottom:12px;" });
   const listCard   = el("div", { class:"card2", style:"padding:0;" });
 
   view.appendChild(topBar);
@@ -657,19 +708,28 @@ function viewProjectEditor(db){
   view.appendChild(listCard);
 
   function rerender(){
-    // ---------- (상단) DETAIL ----------
+    // ---- year filter 적용한 리스트
+    const filtered = (yearFilter === "ALL")
+      ? db.projects.slice()
+      : db.projects.filter(p => projectYear(p) === yearFilter);
+
+    // 선택 보정
+    if (!selectedId || !filtered.some(p=>p.projectId===selectedId)){
+      selectedId = filtered[0]?.projectId || db.projects[0]?.projectId || "";
+      localStorage.setItem(LS_SEL, selectedId);
+    }
+
+    // -----------------------
+    // DETAIL (상단)
+    // -----------------------
     detailCard.innerHTML = "";
     detailCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
 
-    if (!db.projects.length){
-      detailCard.appendChild(
-        el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n상단 ‘+ 새 프로젝트’로 추가하세요.")
-      );
+    const p = projByIdLocal(selectedId);
+
+    if (!p){
+      detailCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하거나 생성하면 상세 입력이 표시됩니다."));
     } else {
-      if (!selectedId || !projByIdLocal(selectedId)) selectedId = db.projects[0].projectId;
-
-      const p = projByIdLocal(selectedId);
-
       const codeInput = el("input", { class:"btn2", type:"text", value: p.projectCode || p.projectId || "", placeholder:"프로젝트 코드" });
       const nameInput = el("input", { class:"btn2", type:"text", value: p.projectName || "", placeholder:"프로젝트 명칭" });
       const useInput  = el("input", { class:"btn2", type:"text", value: p.buildingUse || "", placeholder:"예) 물류센터, 주상복합 등" });
@@ -714,6 +774,7 @@ function viewProjectEditor(db){
           saveDB(db);
           toast("삭제 완료");
           selectedId = db.projects[0]?.projectId || "";
+          localStorage.setItem(LS_SEL, selectedId);
           render();
         }
       }, "삭제");
@@ -737,27 +798,46 @@ function viewProjectEditor(db){
       );
     }
 
-    // ---------- (하단) LIST ----------
+    // -----------------------
+    // LIST (하단) + 우측 년도 드롭다운
+    // -----------------------
     listCard.innerHTML = "";
-    listCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
 
-    if (!db.projects.length){
-      listCard.appendChild(
-        el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.")
-      );
+    const yearSel = buildYearSelect(yearFilter, (v)=>{
+      yearFilter = v;
+      localStorage.setItem(LS_YEAR, yearFilter);
+      rerender();
+    });
+
+    const listHead = el("div", {
+      class:"card2-title",
+      style:"display:flex;align-items:center;justify-content:space-between;gap:10px;"
+    },
+      el("div", {}, "프로젝트 리스트"),
+      yearSel // ✅ 우측 빨간영역 = 년도 드롭다운
+    );
+
+    listCard.appendChild(listHead);
+
+    if (!filtered.length){
+      listCard.appendChild(el("div", { class:"wtEmpty2" }, "해당 년도에 등록된 프로젝트가 없습니다."));
       return;
     }
 
     const listHost = el("div", { class:"wtList2" });
-    db.projects.forEach(p=>{
-      const active = (p.projectId === selectedId);
+    filtered.forEach(pp=>{
+      const active = (pp.projectId === selectedId);
       listHost.appendChild(
         el("button", {
           class:`wtProjItem2 ${active ? "active" : ""}`,
-          onclick:()=>{ selectedId = p.projectId; rerender(); }
+          onclick:()=>{
+            selectedId = pp.projectId;
+            localStorage.setItem(LS_SEL, selectedId);
+            rerender();
+          }
         },
-          el("div", { class:"wtProjTitle2" }, `${p.projectCode||p.projectId} (${p.projectName||""})`.trim()),
-          el("div", { class:"wtProjMeta2" }, `용도: ${p.buildingUse||"-"} · 연면적: ${p.grossArea||"-"} · 구조: ${p.structureType||"-"}`)
+          el("div", { class:"wtProjTitle2" }, `${pp.projectCode||pp.projectId} (${pp.projectName||""})`.trim()),
+          el("div", { class:"wtProjMeta2" }, `용도: ${pp.buildingUse||"-"} · 연면적: ${pp.grossArea||"-"} · 구조: ${pp.structureType||"-"}`)
         )
       );
     });
@@ -766,6 +846,7 @@ function viewProjectEditor(db){
 
   rerender();
 }
+
 
 
 
@@ -1226,16 +1307,53 @@ function viewDashboard(db){
 
 
   function viewWorkCalendar(db){
-    const view = $("#view2");
-    view.innerHTML = "";
-    setRouteTitle("업무관리 · 종합 공정관리");
-    view.appendChild(
-      el("div", { class:"card2", style:"padding:14px;" },
-        el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "캘린더(placeholder)"),
-        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "요청 시 캘린더 UI를 확장합니다.")
-      )
-    );
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 종합 공정관리");
+
+  const LS_YEAR = "APP2_WORKSCHEDULE_YEAR";
+  const cy = new Date().getFullYear();
+  let year = (localStorage.getItem(LS_YEAR) || String(cy));
+
+  function buildYearSelect(){
+    const s = el("select", {
+      class:"yearSelect2",
+      onchange:(e)=>{
+        year = e.target.value;
+        localStorage.setItem(LS_YEAR, year);
+        toast(`${year}년 선택`);
+      }
+    });
+
+    for (let y=cy-3; y<=cy+1; y++){
+      const yy = String(y);
+      const o = el("option", { value:yy }, `${yy}년`);
+      if (yy === year) o.selected = true;
+      s.appendChild(o);
+    }
+    return s;
   }
+
+  // ✅ 상단바(좌측: 검색/설명 영역, 우측: 년도 드롭다운)
+  const topBar = el("div", {
+    class:"card2",
+    style:"padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;"
+  },
+    el("div", { style:"font-weight:1100;" }, "종합 공정관리"),
+    buildYearSelect() // ✅ 우측 빨간영역 = 년도 드롭다운
+  );
+
+  view.appendChild(topBar);
+
+  // 기존 placeholder 유지
+  view.appendChild(
+    el("div", { class:"card2", style:"padding:14px;" },
+      el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "캘린더(placeholder)"),
+      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "요청 시 캘린더 UI를 확장합니다.")
+    )
+  );
+}
+
 
   function viewChecklist(db, teamLabel){
     const view = $("#view2");
