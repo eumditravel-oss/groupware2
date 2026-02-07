@@ -1485,48 +1485,275 @@
 }
 
 
-  function viewSchedule(db, sub){
-    if (!els.view) return;
-    els.view.innerHTML = "";
+  /* ✅ PATCH: 일정관리 = “게시판 느낌(달력 중심)” 적용
+   - viewSchedule() 를 달력 UI(월 이동 + 날짜 클릭 상세)로 교체
+   - 휴가관리: type이 "휴가" 또는 "외근" 인 항목 중심(없으면 전체 표시)
+   - 회사공식일정: 휴가/외근 제외(없으면 전체 표시)
+*/
 
-    const label = (sub === "vacation") ? "휴가관리" : "회사공식일정";
-    const title = `일정관리 · ${label}`;
-    setRouteTitle(title);
+function viewSchedule(db, sub){
+  if (!els.view) return;
+  els.view.innerHTML = "";
 
-    const items = (db.staffSchedules || [])
-      .slice()
-      .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
-      .slice(0, 50);
+  const isVacation = (sub === "vacation");
+  const label = isVacation ? "휴가관리" : "회사공식일정";
+  const title = `일정관리 · ${label}`;
+  setRouteTitle(title);
 
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">${escapeHtml(title)}</div>
-          <div class="badge">${items.length}건</div>
-        </div>
-        <div class="list"></div>
+  const all = Array.isArray(db.staffSchedules) ? db.staffSchedules.slice() : [];
+
+  // ✅ 메뉴별 필터(데이터가 부족하면 전체로 fallback)
+  const filtered = (() => {
+    const vac = all.filter(e => (e.type === "휴가" || e.type === "외근"));
+    const nonVac = all.filter(e => !(e.type === "휴가" || e.type === "외근"));
+    if (isVacation) return vac.length ? vac : all;
+    return nonVac.length ? nonVac : all;
+  })();
+
+  // YYYY-MM-DD 안전 파싱
+  const parseYMD = (s)=>{
+    const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    const dt = new Date(y, mo-1, d, 0,0,0,0);
+    // 유효성 체크
+    if (dt.getFullYear() !== y || (dt.getMonth()+1) !== mo || dt.getDate() !== d) return null;
+    return dt;
+  };
+  const ymd = (dt)=> `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
+  const ymLabel = (dt)=> `${dt.getFullYear()}년 ${pad2(dt.getMonth()+1)}월`;
+
+  // date -> events[]
+  const map = new Map();
+  filtered.forEach(e=>{
+    const d = String(e.date||"");
+    if (!d) return;
+    if (!map.has(d)) map.set(d, []);
+    map.get(d).push(e);
+  });
+
+  // UI state
+  const uiKey = `CONCOST_SCHEDULE_UI_V1_${isVacation ? "vacation" : "company"}`;
+  const ui = safeParse(localStorage.getItem(uiKey) || "{}", {});
+  const today = new Date();
+  const initMonth = (() => {
+    const saved = parseYMD(String(ui.month || ""));
+    if (saved) return new Date(saved.getFullYear(), saved.getMonth(), 1);
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  })();
+  const initSelected = (() => {
+    const saved = parseYMD(String(ui.selected || ""));
+    if (saved) return ymd(saved);
+    return ymd(today);
+  })();
+
+  ui.month = ymd(initMonth);
+  ui.selected = initSelected;
+  localStorage.setItem(uiKey, JSON.stringify(ui));
+
+  // Layout (게시판 느낌: Head + Card)
+  const wrap = dom(`
+    <div class="boardWrap">
+      <div class="boardHead card">
+        <div class="boardHeadTitle">${escapeHtml(title)}</div>
       </div>
-    `);
 
-    const list = $(".list", card);
-    if (list){
-      if (!items.length){
-        list.appendChild(dom(`<div class="empty">표시할 일정이 없습니다</div>`));
-      } else {
-        items.forEach(e=>{
-          list.appendChild(dom(`
-            <div class="list-item">
-              <div class="list-title">${escapeHtml(`${e.type || "-"} · ${e.name || "-"}`)}</div>
-              <div class="list-sub">${escapeHtml(`${e.date || "-"} · ${e.note || ""}`.trim())}</div>
-            </div>
-          `));
-        });
-      }
+      <div class="boardCard card" style="padding:12px;">
+        <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="row" style="gap:8px;">
+            <button class="btn tiny" id="calPrev" type="button">‹</button>
+            <button class="btn tiny" id="calToday" type="button">오늘</button>
+            <button class="btn tiny" id="calNext" type="button">›</button>
+          </div>
+
+          <div style="font-weight:1100; font-size:16px; letter-spacing:-0.2px;" id="calMonthLabel"></div>
+
+          <div class="badge" id="calCount" style="white-space:nowrap;"></div>
+        </div>
+
+        <div class="cal-dow" style="margin-top:12px;">
+          <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+        </div>
+
+        <div class="cal-grid" id="calGrid"></div>
+
+        <div class="schedPanel" style="margin-top:14px;">
+          <div class="schedTitle" id="dayTitle"></div>
+          <div id="dayList"></div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  els.view.appendChild(wrap);
+
+  const elPrev = byId("calPrev");
+  const elNext = byId("calNext");
+  const elToday = byId("calToday");
+  const elMonthLabel = byId("calMonthLabel");
+  const elCount = byId("calCount");
+  const elGrid = byId("calGrid");
+  const elDayTitle = byId("dayTitle");
+  const elDayList = byId("dayList");
+
+  function saveUI(){
+    localStorage.setItem(uiKey, JSON.stringify(ui));
+  }
+
+  function renderDayDetail(dayStr){
+    ui.selected = dayStr;
+    saveUI();
+
+    const items = (map.get(dayStr) || []).slice();
+    if (elDayTitle) elDayTitle.textContent = `${dayStr} 일정`;
+
+    if (!elDayList) return;
+    elDayList.innerHTML = "";
+
+    if (!items.length){
+      elDayList.appendChild(dom(`<div class="schedEmpty">표시할 일정이 없습니다</div>`));
+      return;
     }
 
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
+    // 같은 날짜 내 정렬(휴가/외근 먼저, 이름/노트)
+    items.sort((a,b)=>{
+      const ta = String(a.type||"");
+      const tb = String(b.type||"");
+      if (ta !== tb) return ta.localeCompare(tb);
+      const na = String(a.name||"");
+      const nb = String(b.name||"");
+      if (na !== nb) return na.localeCompare(nb);
+      return String(a.note||"").localeCompare(String(b.note||""));
+    });
+
+    items.forEach(e=>{
+      elDayList.appendChild(dom(`
+        <div class="list-item" style="padding:10px 12px; border:1px solid rgba(0,0,0,.06); background:rgba(255,255,255,.92); border-radius:14px; margin-top:8px;">
+          <div class="list-title" style="font-weight:1000; font-size:13px;">
+            ${escapeHtml(`${e.type || "-"} · ${e.name || "-"}`)}
+          </div>
+          <div class="list-sub" style="margin-top:4px; font-weight:900; font-size:12px; color:var(--muted);">
+            ${escapeHtml(String(e.note || "").trim() || " ")}
+          </div>
+        </div>
+      `));
+    });
   }
+
+  function renderMonth(monthDate){
+    const m0 = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    ui.month = ymd(m0);
+    saveUI();
+
+    if (elMonthLabel) elMonthLabel.textContent = ymLabel(m0);
+
+    // 이 달에 속하는 일정 개수
+    const y = m0.getFullYear();
+    const m = m0.getMonth(); // 0-based
+    const start = new Date(y, m, 1);
+    const end = new Date(y, m+1, 1);
+
+    let monthCount = 0;
+    for (const [k, arr] of map.entries()){
+      const dt = parseYMD(k);
+      if (!dt) continue;
+      if (dt >= start && dt < end) monthCount += arr.length;
+    }
+    if (elCount) elCount.textContent = `${monthCount}건`;
+
+    // grid
+    if (!elGrid) return;
+    elGrid.innerHTML = "";
+
+    const firstDow = start.getDay(); // 0=Sun
+    const lastDay = new Date(y, m+1, 0).getDate();
+
+    // leading blanks
+    for (let i=0;i<firstDow;i++){
+      elGrid.appendChild(dom(`<div class="cal-cell cal-empty"></div>`));
+    }
+
+    const todayStr = ymd(today);
+
+    for (let d=1; d<=lastDay; d++){
+      const dt = new Date(y, m, d);
+      const key = ymd(dt);
+      const evs = map.get(key) || [];
+      const isSelected = (ui.selected === key);
+      const isToday = (todayStr === key);
+
+      const cell = dom(`
+        <button type="button" class="cal-cell" style="
+          text-align:left;
+          cursor:pointer;
+          ${isSelected ? "border-color: rgba(240,138,36,.35); box-shadow: 0 10px 18px rgba(0,0,0,.06);" : ""}
+          ${isToday ? "outline: 2px solid rgba(240,138,36,.28); outline-offset: -2px;" : ""}
+        ">
+          <div class="cal-day">${d}</div>
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">
+            ${
+              evs.slice(0,2).map(e=>`
+                <div style="
+                  font-size:11px;
+                  font-weight:900;
+                  color: rgba(0,0,0,.72);
+                  white-space:nowrap;
+                  overflow:hidden;
+                  text-overflow:ellipsis;
+                  padding:2px 6px;
+                  border-radius:999px;
+                  border:1px solid rgba(0,0,0,.10);
+                  background: rgba(0,0,0,.03);
+                ">${escapeHtml(String(e.type||"일정"))}</div>
+              `).join("")
+            }
+            ${evs.length > 2 ? `<div style="font-size:11px; font-weight:900; color:var(--muted);">+${evs.length-2}</div>` : ``}
+          </div>
+        </button>
+      `);
+
+      cell.addEventListener("click", ()=>{
+        ui.selected = key;
+        saveUI();
+        renderMonth(m0);      // 선택 표시 갱신
+        renderDayDetail(key); // 상세 갱신
+      });
+
+      elGrid.appendChild(cell);
+    }
+
+    // 선택일이 현재 월 밖이면: 해당 월 1일로 자동 선택
+    const sel = parseYMD(ui.selected);
+    if (!sel || sel.getFullYear() !== y || sel.getMonth() !== m){
+      ui.selected = ymd(new Date(y, m, 1));
+      saveUI();
+    }
+
+    renderDayDetail(ui.selected);
+  }
+
+  if (elPrev) elPrev.addEventListener("click", ()=>{
+    const cur = parseYMD(ui.month) || new Date(today.getFullYear(), today.getMonth(), 1);
+    const prev = new Date(cur.getFullYear(), cur.getMonth()-1, 1);
+    renderMonth(prev);
+  });
+
+  if (elNext) elNext.addEventListener("click", ()=>{
+    const cur = parseYMD(ui.month) || new Date(today.getFullYear(), today.getMonth(), 1);
+    const next = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+    renderMonth(next);
+  });
+
+  if (elToday) elToday.addEventListener("click", ()=>{
+    ui.month = ymd(new Date(today.getFullYear(), today.getMonth(), 1));
+    ui.selected = ymd(today);
+    saveUI();
+    renderMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+  });
+
+  renderMonth(initMonth);
+}
+
 
   function viewWorkShortcut(){
     if (!els.view) return;
