@@ -739,4 +739,19 @@ body{
   .wtPartGrid2{ grid-template-columns: 1fr; }
 }
 
+/* ✅ 공통: 우측 년도 드롭박스 */
+.yearSelect2{
+  min-width: 140px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 1000;
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+}
+.yearSelect2:focus{
+  box-shadow: 0 0 0 3px rgba(58,122,254,.10);
+  border-color: rgba(58,122,254,.35);
+}
 
