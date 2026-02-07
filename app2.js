@@ -363,36 +363,60 @@ function renderSide2(db){
 
 
   /***********************
-   * Aggregations (기존)
-   ***********************/
-  function computeProjectDays(db, projectId){
-    const set = new Set();
-    for (const l of (db.logs||[])){
-      if (l.status !== "approved") continue;
-      if (l.projectId !== projectId) continue;
-      set.add(`${l.projectId}__${l.date}`);
-    }
-    return set.size;
+ * Aggregations (기존)
+ ***********************/
+function computeProjectDays(db, projectId){
+  const set = new Set();
+  for (const l of (db.logs||[])){
+    if (l.status !== "approved") continue;
+    if (l.projectId !== projectId) continue;
+    set.add(`${l.projectId}__${l.date}`);
   }
-  function computeProjectHeadcount(db, projectId){
-    const set = new Set();
-    for (const l of (db.logs||[])){
-      if (l.status !== "approved") continue;
-      if (l.projectId !== projectId) continue;
-      set.add(l.writerId);
-    }
-    return set.size;
+  return set.size;
+}
+function computeProjectHeadcount(db, projectId){
+  const set = new Set();
+  for (const l of (db.logs||[])){
+    if (l.status !== "approved") continue;
+    if (l.projectId !== projectId) continue;
+    set.add(l.writerId);
   }
-  function computeProjectBreakdown(db, projectId){
-    const map = {};
-    for (const l of (db.logs||[])){
-      if (l.status !== "approved") continue;
-      if (l.projectId !== projectId) continue;
-      const k = `${l.category}||${l.process}`;
-      map[k] = (map[k]||0) + (Number(l.ratio)||0);
-    }
-    return map;
+  return set.size;
+}
+function computeProjectBreakdown(db, projectId){
+  const map = {};
+  for (const l of (db.logs||[])){
+    if (l.status !== "approved") continue;
+    if (l.projectId !== projectId) continue;
+    const k = `${l.category}||${l.process}`;
+    map[k] = (map[k]||0) + (Number(l.hours||0)); // ✅ ratio -> hours
   }
+  return map;
+}
+
+// ✅ [여기에 추가]
+const HOURS_PER_DAY = 8;
+
+function computeProjectTotalDays(db, projectId){
+  let totalHours = 0;
+  for (const l of (db.logs||[])){
+    if (l.status !== "approved") continue;
+    if (l.projectId !== projectId) continue;
+    totalHours += Number(l.hours||0);
+  }
+  return Math.ceil(totalHours / HOURS_PER_DAY);
+}
+
+function computeProjectTotalHours(db, projectId){
+  let totalHours = 0;
+  for (const l of (db.logs||[])){
+    if (l.status !== "approved") continue;
+    if (l.projectId !== projectId) continue;
+    totalHours += Number(l.hours||0);
+  }
+  return totalHours;
+}
+
 
   /***********************
    * Home (대시보드)
@@ -626,12 +650,16 @@ function renderSide2(db){
     function renderEntryCard(ent, idx){
       const projectSel = buildProjectSelect(db, ent.projectId, v => ent.projectId = v);
 
-      const ratio = el("input", {
-        class:"btn2",
-        type:"number", min:"0", max:"100", step:"1",
-        value: ent.ratio,
-        oninput:(e)=> ent.ratio = clamp(Number(e.target.value||0),0,100)
-      });
+      const hours = el("input", {
+  class:"btn2",
+  type:"number",
+  min:"0",
+  step:"0.5",                 // 0.5시간 단위 (원하면 0.25 가능)
+  placeholder:"시간",
+  value: ent.hours ?? 1,
+  oninput:(e)=> ent.hours = Math.max(0, Number(e.target.value||0))
+});
+
 
       const catSel = buildCategorySelect(ent.category, (v)=>{
         ent.category = v;
@@ -682,7 +710,9 @@ function renderSide2(db){
           const e = entries[i];
           if (!e.projectId) return toast(`업무 항목 ${i+1}: 프로젝트를 선택해 주세요.`);
           if (!e.content || !e.content.trim()) return toast(`업무 항목 ${i+1}: 작업내용을 입력해 주세요.`);
-          if (!(e.ratio>=0 && e.ratio<=100)) return toast(`업무 항목 ${i+1}: 업무비율(0~100)을 입력해 주세요.`);
+          if (!(e.hours > 0))
+  return toast(`업무 항목 ${i+1}: 투입시간(시간)을 입력해 주세요.`);
+
         }
 
         const submittedAt = nowISO();
@@ -695,7 +725,7 @@ function renderSide2(db){
             category: e.category,
             process: e.process,
             content: e.content.trim(),
-            ratio: Number(e.ratio)||0,
+            hours: Number(e.hours)||0,
             writerId: uid,
             status: "submitted",
             submittedAt,
@@ -960,7 +990,9 @@ function renderSide2(db){
       const active = (p.projectId === selectedId);
 
       // 좌측 1줄 요약(필요하면 확장)
-      const days = computeTotalDays(p.projectId);
+      const totalHours = computeProjectTotalHours(db, p.projectId);
+const totalDays  = computeProjectTotalDays(db, p.projectId);
+
 
       listHost.appendChild(
         el("button", {
