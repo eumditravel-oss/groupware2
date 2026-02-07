@@ -1,3 +1,4 @@
+/* app2.js (업무관리 대시보드 = 이미지 구성 "홈" 추가) */
 (() => {
   "use strict";
 
@@ -89,17 +90,35 @@
   }
 
   function ensureDB(){
-    // 메인에서 이미 upgrade/seed를 수행 중이므로,
-    // 여기서는 "없으면 최소 구조라도 만든다" 정도로만 방어.
     const db = loadDB();
-    if (db && typeof db === "object") return db;
+    if (db && typeof db === "object") {
+      // 신규 필드 방어(기존 데이터 깨지지 않게)
+      if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
+      if (!Array.isArray(db.tasks)) db.tasks = [];
+      if (!Array.isArray(db.messages)) db.messages = [];
+      if (!Array.isArray(db.approvals)) db.approvals = []; // (필요 시 확장)
+      return db;
+    }
 
     const seed = {
       meta:{ version:"0.5", createdAt: nowISO() },
       users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
       projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
       logs: [],
-      checklists: []
+      checklists: [],
+      // 홈 대시보드용
+      sharedFiles: [
+        { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+        { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+        { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
+      ],
+      tasks: [
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
+      ],
+      messages: []
     };
     localStorage.setItem(LS_KEY, JSON.stringify(seed));
     return seed;
@@ -155,6 +174,7 @@
    * Routes (업무관리 전용)
    ***********************/
   const SIDE2 = [
+    { key:"home",           label:"대시보드" },          // ✅ 추가(이미지 구성)
     { key:"log",            label:"업무일지" },
     { key:"approve",        label:"승인" },
     { key:"dashboard",      label:"프로젝트 소요시간" },
@@ -165,8 +185,8 @@
 
   function parseHash(){
     const raw = (location.hash || "").replace(/^#/, "");
-    const key = decodeURIComponent(raw || "log");
-    return SIDE2.some(x=>x.key===key) ? key : "log";
+    const key = decodeURIComponent(raw || "home");
+    return SIDE2.some(x=>x.key===key) ? key : "home";
   }
   function setHash(key){ location.hash = `#${encodeURIComponent(key)}`; }
 
@@ -176,8 +196,9 @@
   }
 
   function allowedWorkRoutesFor(user){
-    if (isStaff(user)) return new Set(["log","checklist-view"]);
-    return new Set(["log","approve","dashboard","calendar","checklist","checklist-view"]);
+    // staff도 홈은 사용 가능
+    if (isStaff(user)) return new Set(["home","log","checklist-view"]);
+    return new Set(["home","log","approve","dashboard","calendar","checklist","checklist-view"]);
   }
 
   function renderSide2(db){
@@ -261,33 +282,128 @@
   }
 
   /***********************
-   * CHECKLIST helpers
+   * Home (대시보드) - 이미지 구성
    ***********************/
-  function confirmChecklist(item, confirmerId){
-    ensureChecklistShape(item);
-    const exists = item.confirmations.some(c => c.userId === confirmerId);
-    if (!exists){
-      item.confirmations.push({ userId: confirmerId, at: nowISO() });
-    } else {
-      const c = item.confirmations.find(x => x.userId === confirmerId);
-      if (c) c.at = nowISO();
-    }
+  function computeKpis(db){
+    const today = todayISO();
+    const logs = Array.isArray(db.logs) ? db.logs : [];
+    const approvalsWait = logs.filter(l => l.status === "submitted").length;
+
+    const todayMy = logs.filter(l => l.date === today).length;
+    const inProgress = logs.filter(l => (l.status === "submitted" || l.status === "approved")).length;
+
+    const unread = Array.isArray(db.messages) ? db.messages.filter(m => m.read !== true).length : 0;
+
+    // 진행률(%) 예시: 승인 대기/전체 비율 (표시용)
+    const progressRate = inProgress ? Math.round((logs.filter(l=>l.status==="approved").length / inProgress) * 100) : 0;
+
+    return {
+      todayMy,
+      inProgress,
+      unread,
+      approvalsWait,
+      progressRate
+    };
   }
-  function setChecklistDone(db, item, done){
-    ensureChecklistShape(item);
-    if (done){
-      item.status = "done";
-      item.doneBy = getUserId(db);
-      item.doneAt = nowISO();
-    } else {
-      item.status = "open";
-      item.doneBy = "";
-      item.doneAt = "";
-    }
+
+  function kpiCard(label, value, badgeText){
+    return el("div", { class:"kpi" },
+      el("div", { class:"kpi-top" },
+        el("div", { class:"kpi-label" }, label),
+        badgeText ? el("div", { class:"kpi-badge" }, badgeText) : el("div")
+      ),
+      el("div", { class:"kpi-value" }, String(value))
+    );
+  }
+
+  function viewHome(db){
+    const view = $("#view2");
+    view.innerHTML = "";
+    setRouteTitle("업무관리 · 대시보드");
+
+    const k = computeKpis(db);
+
+    // KPI row
+    const kpiGrid = el("div", { class:"kpiGrid" },
+      kpiCard("오늘 업무일지", k.todayMy, ""),
+      kpiCard("진행 중 업무", k.inProgress, `${k.progressRate}%`),
+      kpiCard("미확인 메시지", k.unread, ""),
+      kpiCard("대기 결재", k.approvalsWait, "")
+    );
+
+    // 작업 파일 공유
+    const files = Array.isArray(db.sharedFiles) ? db.sharedFiles : [];
+    const filesTable = el("div", { class:"card2", style:"padding:0;" },
+      el("div", { class:"card2-title", style:"display:flex;align-items:center;justify-content:space-between;" },
+        el("div", {}, "작업 파일 공유"),
+        el("button", { class:"btn2 ghost2", onclick:()=>toast("추후 서버 업로드 연동 예정") }, "더보기")
+      ),
+      el("div", { class:"tableWrap" },
+        el("table", { class:"tbl2" },
+          el("thead", {},
+            el("tr", {},
+              el("th", {}, "파일명"),
+              el("th", { class:"w120" }, "파일크기"),
+              el("th", { class:"w120" }, "등록일"),
+              el("th", { class:"w120" }, "수정일"),
+              el("th", { class:"w180" }, "업로드"),
+              el("th", { class:"w120" }, "")
+            )
+          ),
+          el("tbody", {},
+            ...(files.slice(0,5).map(f=>{
+              const actions = el("div", { class:"rowActions" },
+                el("button", { class:"iconBtn", title:"보기", onclick:()=>toast("보기(placeholder)") }, "🔍"),
+                el("button", { class:"iconBtn", title:"다운", onclick:()=>toast("다운(placeholder)") }, "⬇️"),
+                el("button", { class:"iconBtn", title:"공유", onclick:()=>toast("공유(placeholder)") }, "🔗")
+              );
+              return el("tr", {},
+                el("td", { class:"fileName" }, f.name || "-"),
+                el("td", { class:"mutedCell" }, f.size || "-"),
+                el("td", { class:"mutedCell" }, f.createdAt || "-"),
+                el("td", { class:"mutedCell" }, f.updatedAt || "-"),
+                el("td", { class:"mutedCell" }, f.uploader || "-"),
+                el("td", {}, actions)
+              );
+            }))
+          )
+        )
+      )
+    );
+
+    // 개별 진행 상황
+    const tasks = Array.isArray(db.tasks) ? db.tasks : [];
+    const progressCard = el("div", { class:"card2", style:"padding:0;" },
+      el("div", { class:"card2-title" }, "개별 진행 상황"),
+      el("div", { class:"list2" },
+        ...(tasks.slice(0,6).map(t=>{
+          const pct = clamp(Number(t.progress||0),0,100);
+          const statusCls = (t.status==="지연") ? "tag danger" : (t.status==="완료" ? "tag ok" : "tag");
+          return el("div", { class:"progressRow" },
+            el("div", { class:"avatar" }, "👤"),
+            el("div", { class:"pCol" },
+              el("div", { class:"pTop" },
+                el("div", { class:"pTitle" }, t.title || "업무"),
+                el("div", { class: statusCls }, t.status || "진행")
+              ),
+              el("div", { class:"bar" },
+                el("div", { class:"barFill", style:`width:${pct}%;` })
+              ),
+              el("div", { class:"pNote" }, t.note || "")
+            ),
+            el("div", { class:"pPct" }, `${pct}%`)
+          );
+        }))
+      )
+    );
+
+    view.appendChild(kpiGrid);
+    view.appendChild(filesTable);
+    view.appendChild(progressCard);
   }
 
   /***********************
-   * VIEWS (원본 로직 최대 유지)
+   * VIEWS (기존)
    ***********************/
   function makeEmptyEntry(db){
     const p = db.projects?.[0]?.projectId || "";
@@ -328,7 +444,7 @@
       const procSel = buildProcessSelect(ent.category, ent.process, (v)=> ent.process = v);
 
       const content = el("textarea", {
-        style:"width:100%;min-height:90px;border:1px solid var(--line);border-radius:12px;padding:10px;font-weight:800;",
+        class:"ta2",
         placeholder:"작업내용을 입력하세요",
         oninput:(e)=> ent.content = e.target.value
       }, ent.content || "");
@@ -543,13 +659,10 @@
     const view = $("#view2");
     view.innerHTML = "";
     setRouteTitle("종합 공정관리");
-
-    // 원본 캘린더 UI는 길이가 커서,
-    // 현재는 “동작 보존” 목적의 최소 버전만 붙여둡니다(원본 그대로 붙여넣기 가능).
     view.appendChild(
       el("div", { class:"card2", style:"padding:14px;" },
-        el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "캘린더(원본 로직 유지 가능)"),
-        el("div", { style:"color:var(--muted);font-size:12px;" }, "요청 시 app.js의 viewWorkCalendar 전체를 그대로 이 파일로 이동해 완전 동일 UI로 맞춰드립니다.")
+        el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "캘린더(placeholder)"),
+        el("div", { style:"color:var(--muted);font-size:12px;" }, "요청 시 캘린더 UI 전체를 이 파일로 이관해 동일 구성으로 확장합니다.")
       )
     );
   }
@@ -567,12 +680,10 @@
     }
 
     db.checklists = Array.isArray(db.checklists) ? db.checklists : [];
-    const projId = db.projects?.[0]?.projectId || "";
-
     view.appendChild(
       el("div", { class:"card2", style:"padding:14px;" },
         el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "체크리스트(Leader+ 작성)"),
-        el("div", { style:"color:var(--muted);font-size:12px;" }, "현재는 분리 셋업 우선. 필요 시 app.js의 viewChecklist/viewChecklistView를 그대로 옮겨 완전 동일 기능으로 맞춰드립니다.")
+        el("div", { style:"color:var(--muted);font-size:12px;" }, "필요 시 기존 체크리스트 로직을 그대로 이관해 동일 기능으로 맞춥니다.")
       )
     );
   }
@@ -584,20 +695,21 @@
     view.appendChild(
       el("div", { class:"card2", style:"padding:14px;" },
         el("div", { style:"font-weight:1000;margin-bottom:6px;" }, "체크리스트 목록"),
-        el("div", { style:"color:var(--muted);font-size:12px;" }, "필요 시 app.js의 viewChecklistView 전체를 그대로 이 파일로 이동해 완전 동일 기능으로 맞춰드립니다.")
+        el("div", { style:"color:var(--muted);font-size:12px;" }, "필요 시 목록/확인 기능을 동일하게 확장합니다.")
       )
     );
   }
 
   function renderView(db){
     const key = parseHash();
-    if (key === "log") viewLog(db);
+    if (key === "home") viewHome(db);
+    else if (key === "log") viewLog(db);
     else if (key === "approve") viewApprove(db);
     else if (key === "dashboard") viewDashboard(db);
     else if (key === "calendar") viewWorkCalendar(db);
     else if (key === "checklist") viewChecklist(db);
     else if (key === "checklist-view") viewChecklistView(db);
-    else viewLog(db);
+    else viewHome(db);
   }
 
   function render(){
@@ -609,11 +721,10 @@
 
     renderSide2(db);
 
-    // 권한 강제
     const allowed = allowedWorkRoutesFor(me);
     const cur = parseHash();
     if (!allowed.has(cur)){
-      setHash(isStaff(me) ? "checklist-view" : "log");
+      setHash(isStaff(me) ? "home" : "home");
       return;
     }
 
@@ -627,7 +738,7 @@
 
     window.addEventListener("hashchange", render);
 
-    if (!location.hash) setHash("log");
+    if (!location.hash) setHash("home");
     render();
   }
 
