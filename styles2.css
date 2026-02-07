@@ -514,6 +514,28 @@ body{
   gap: 2px;
 }
 
+/* ✅ PATCH: wtGrid2 (JS에서 사용) - 좌측 리스트 / 우측 상세 레이아웃 */
+.wtGrid2{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  min-height: 520px;
+}
+
+/* (선택) 기존 wtLayout2를 쓰는 코드도 같이 커버하고 싶으면 유지 */
+.wtLayout2{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  min-height: 520px;
+}
+
+@media (max-width: 980px){
+  .wtGrid2{ grid-template-columns: 1fr; }
+  .wtLayout2{ grid-template-columns: 1fr; }
+}
 
 
 /* =========================
