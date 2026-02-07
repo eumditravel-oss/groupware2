@@ -311,7 +311,7 @@ function renderSide2(db){
   if (home && allowed.has("home")){
     host.appendChild(
       el("button", {
-        class:`sideItem2 ${cur==="home" ? "active" : ""}`,
+        class:`navItem2 top ${cur==="home" ? "active" : ""}`,
         onclick:()=> setHash("home")
       }, home.label)
     );
@@ -326,7 +326,7 @@ function renderSide2(db){
     const opened = isOpen(group.groupId);
 
     const head = el("button", {
-      class:`sideGroupHead2 ${opened ? "open" : ""}`,
+      class:`navGroup2 ${opened ? "open" : ""}`,
       onclick:()=>{
         const next = !isOpen(group.groupId);
         setOpen(group.groupId, next);
@@ -342,7 +342,7 @@ function renderSide2(db){
     visibleItems.forEach(it=>{
       list.appendChild(
         el("button", {
-          class:`sideItem2 sub ${cur===it.key ? "active" : ""}`,
+          class:`navItem2 ${cur===it.key ? "active" : ""}`,
           onclick:()=> setHash(it.key)
         }, it.label)
       );
