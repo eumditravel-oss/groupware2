@@ -1730,15 +1730,21 @@ const weeks = [];
   }
 }
 
-// 오버레이 컨테이너
+// 오버레이 컨테이너 (grid 위에 정확히 겹치기)
 const overlay = el("div", { class:"calOverlay2" });
-
-// ✅ overlay는 dowRow 높이만큼 내려서 grid 위에 맞춰야 함
-// dowRow가 wrap 첫 번째라서, overlay를 grid와 동일 위치로 두기 위해 paddingTop 적용
-// (gap=8, dowRow가 margin-bottom 8이므로 보정)
-overlay.style.paddingTop = "56px"; // 요일헤더 높이(대략) - 필요시 52~64 조절
-
 wrap.appendChild(overlay);
+
+// ✅ 요일헤더 높이/마진/그리드 위치를 실제 DOM 기준으로 계산해서 정확히 맞춤
+syncOverlayToGrid(wrap, dowRow, grid, overlay);
+
+    // ✅ 리사이즈/레이아웃 변경 시 overlay 위치/너비를 grid에 다시 맞춤
+attachOverlayResizeObserver(wrap, dowRow, grid, overlay, () => {
+  // overlay 안의 weekBlock/lanes는 grid-column 기반이라 대개 괜찮지만,
+  // rowGap/colGap/width 재반영이 필요하면 rerender()를 호출하는게 가장 안전함.
+  // 다만 무한루프 방지를 위해 여기서는 overlay 기준값만 갱신하고 그대로 둠.
+});
+
+
 
 // projectId -> date presence
 const pres = buildPresenceByProject(year, month);
@@ -1754,13 +1760,24 @@ for (let w=0; w<weeks.length; w++){
 
   // 빈 주면 패스
   if (!isFinite(minDay) || !isFinite(maxDay)) {
-    // 빈 주 영역도 gap 맞추기 위해 빈 블럭 추가
-    overlay.appendChild(el("div", { style:"height:128px;margin-bottom:8px;" }));
-    continue;
-  }
+  // ✅ 실제 grid 첫 셀 높이 + rowGap 기반으로 빈 주도 정확히 맞춤
+  const cells = Array.from(grid.querySelectorAll(".calCell2"));
+  const sampleIdx = w*7;
+  const sampleCell = cells[sampleIdx] || cells[0];
+  const rowGap = __num(getComputedStyle(grid).rowGap || getComputedStyle(grid).gap);
+  const h = (sampleCell ? sampleCell.offsetHeight : 120);
+  overlay.appendChild(el("div", { style:`height:${h}px;margin-bottom:${rowGap}px;` }));
+  continue;
+}
+
 
   // ✅ 주 overlay block: 셀 높이와 맞춰야 함 (현재 cell min-height 120 + padding 감안)
   const weekBlock = el("div", { class:"calWeekOverlay2" });
+  // ✅ weekBlock도 calGrid2와 동일한 7열/갭을 사용
+weekBlock.style.display = "grid";
+weekBlock.style.gridTemplateColumns = overlay.__gridCols || getComputedStyle(grid).gridTemplateColumns;
+weekBlock.style.columnGap = overlay.__colGap || (getComputedStyle(grid).columnGap || getComputedStyle(grid).gap);
+
   // weekBlock은 7열 grid와 gap만 맞추고, 실제 레인은 아래에서 별도 stack
 
   // 레인 목록(각 레인은 7열 grid)
@@ -1853,6 +1870,11 @@ for (let w=0; w<weeks.length; w++){
     if (!placed){
       // 새 레인 생성
       const laneNode = el("div", { class:"calLane2" });
+      // ✅ lane도 calGrid2와 동일한 7열/갭 강제
+laneNode.style.display = "grid";
+laneNode.style.gridTemplateColumns = overlay.__gridCols || getComputedStyle(grid).gridTemplateColumns;
+laneNode.style.columnGap = overlay.__colGap || (getComputedStyle(grid).columnGap || getComputedStyle(grid).gap);
+
       const occ = Array(7).fill(false);
 
       const { bg, ink } = hashColor(it.pid);
@@ -1905,11 +1927,20 @@ for (let w=0; w<weeks.length; w++){
   // weekBlock은 7열 grid인데, stack을 전체폭으로
   weekBlock.appendChild(stack);
 
-  // ✅ weekBlock의 높이를 셀 min-height에 맞춰 확보(레이인이 많으면 자동 증가)
-  // 기본: 셀 120px + padding
-  weekBlock.style.minHeight = "120px";
+  // ✅ 실제 그리드 셀 높이/rowGap 기반으로 week 높이/간격을 1:1로 맞춤
+const cells = Array.from(grid.querySelectorAll(".calCell2"));
+const sampleIdx = w*7; // 이 주의 첫번째 셀
+const sampleCell = cells[sampleIdx] || cells[0];
 
-  overlay.appendChild(weekBlock);
+const gcs = getComputedStyle(grid);
+const rowGap = __num(gcs.rowGap || gcs.gap);
+const cellH = (sampleCell ? sampleCell.offsetHeight : 120);
+
+weekBlock.style.minHeight = `${cellH}px`;
+weekBlock.style.marginBottom = `${rowGap}px`;
+
+overlay.appendChild(weekBlock);
+
 }
 
 
@@ -1921,6 +1952,71 @@ for (let w=0; w<weeks.length; w++){
       )
     );
   }
+
+    /***********************
+ * ✅ Calendar Overlay Align Helpers
+ ***********************/
+function __num(v){ const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
+
+function getOffsetTopWithin(parent, child){
+  // parent 기준으로 child의 top(px)
+  const pr = parent.getBoundingClientRect();
+  const cr = child.getBoundingClientRect();
+  return cr.top - pr.top;
+}
+
+function syncOverlayToGrid(wrap, dowRow, grid, overlay){
+  if (!wrap || !dowRow || !grid || !overlay) return;
+
+  // wrap을 기준 컨테이너로
+  wrap.style.position = "relative";
+
+  // overlay 기본
+  overlay.style.position = "absolute";
+  overlay.style.left = "0";
+  overlay.style.right = "0";
+  overlay.style.pointerEvents = "auto"; // span 클릭을 쓰고 있으니 auto 유지(원하면 none으로 바꿔도 됨)
+
+  // ✅ 요일헤더(dowRow) 아래부터 overlay 시작
+  const dowCS = getComputedStyle(dowRow);
+  const mb = __num(dowCS.marginBottom);
+  const top = getOffsetTopWithin(wrap, dowRow) + dowRow.offsetHeight + mb;
+  overlay.style.top = `${top}px`;
+
+  // ✅ overlay의 가로는 grid의 content box와 정확히 동일하게
+  const gridRect = grid.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const leftInWrap = gridRect.left - wrapRect.left;
+  overlay.style.left = `${leftInWrap}px`;
+  overlay.style.width = `${grid.offsetWidth}px`;
+
+  // overlay 내부 weekBlock/lanes가 grid 컬럼/갭을 그대로 따라가도록 기준값 저장(인라인 적용용)
+  const gcs = getComputedStyle(grid);
+  overlay.__gridCols = gcs.gridTemplateColumns;
+  overlay.__colGap   = gcs.columnGap || gcs.gap || "0px";
+  overlay.__rowGap   = gcs.rowGap   || gcs.gap || "0px";
+}
+
+function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverlays){
+  // rerender() 전체를 다시 돌리면 비용이 커서, overlay 위치만 맞추고 lanes만 재계산하도록 훅 제공
+  // (여기서는 가장 안전하게 rerenderOverlays()를 호출하도록 해둠)
+  try{
+    if (overlay.__ro) return;
+    overlay.__ro = new ResizeObserver(() => {
+      syncOverlayToGrid(wrap, dowRow, grid, overlay);
+      if (typeof rerenderOverlays === "function") rerenderOverlays();
+    });
+    overlay.__ro.observe(wrap);
+    overlay.__ro.observe(dowRow);
+    overlay.__ro.observe(grid);
+  }catch{
+    window.addEventListener("resize", () => {
+      syncOverlayToGrid(wrap, dowRow, grid, overlay);
+      if (typeof rerenderOverlays === "function") rerenderOverlays();
+    });
+  }
+}
+
 
   rerender();
 }
