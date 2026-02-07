@@ -1328,49 +1328,162 @@
 
 
   function viewEA(db, sub){
-    if (!els.view) return;
-    els.view.innerHTML = "";
+  if (!els.view) return;
+  els.view.innerHTML = "";
 
-    const box = (sub === "ea-sent") ? "sent" : "inbox";
-    const label = (box === "sent") ? "보낸결재함" : "받은결재함";
-    const title = `전자결재 · ${label}`;
-    setRouteTitle(title);
+  /* ─────────────────────────
+     inbox / sent 분기
+  ───────────────────────── */
+  const box = (sub === "ea-sent") ? "sent" : "inbox";
+  const labelMap = {
+    inbox: "받은결재함",
+    sent:  "보낸결재함"
+  };
 
-    const items = (db.approvals || [])
-      .filter(a => String(a.box||"") === box)
-      .slice()
-      .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+  const title = `전자결재 · ${labelMap[box]}`;
+  setRouteTitle(title);
 
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">${escapeHtml(title)}</div>
-          <div class="badge">${items.length}건</div>
+  const all = (db.approvals || [])
+    .filter(a => String(a.box || "") === box)
+    .slice()
+    .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
+
+  /* ─────────────────────────
+     UI state (게시판과 동일)
+  ───────────────────────── */
+  const uiKey = `CONCOST_EA_UI_V1_${box}`;
+  const ui = safeParse(localStorage.getItem(uiKey) || "{}", {});
+  ui.q = typeof ui.q === "string" ? ui.q : "";
+  ui.page = Number.isFinite(Number(ui.page)) ? Number(ui.page) : 1;
+  const PAGE_SIZE = 10;
+
+  function saveUI(){ localStorage.setItem(uiKey, JSON.stringify(ui)); }
+
+  /* ─────────────────────────
+     Layout (boardWrap 재사용)
+  ───────────────────────── */
+  const wrap = dom(`
+    <div class="boardWrap">
+      <div class="boardHead card">
+        <div class="boardHeadTitle">${escapeHtml(title)}</div>
+        <div class="boardSearchRow">
+          <input class="boardQ" id="eaQ" placeholder="제목 검색" />
+          <button class="btn boardBtn" id="eaSearchBtn" type="button">검색</button>
         </div>
-        <div class="list"></div>
       </div>
-    `);
 
-    const list = $(".list", card);
-    if (list){
-      if (!items.length){
-        list.appendChild(dom(`<div class="empty">표시할 결재 문서가 없습니다</div>`));
-      } else {
-        items.forEach(d=>{
-          const st = d.status ? ` · ${d.status}` : "";
-          list.appendChild(dom(`
-            <div class="list-item">
-              <div class="list-title">${escapeHtml(d.title || "")}</div>
-              <div class="list-sub">${escapeHtml(`${d.from || "-"} · ${d.at || "-"}${st}`)}</div>
+      <div class="boardCard card">
+        <div class="boardTopLine">
+          <div class="boardCount" id="eaCount"></div>
+        </div>
+
+        <div class="boardList" id="eaList"></div>
+        <div class="boardPager" id="eaPager"></div>
+      </div>
+    </div>
+  `);
+
+  els.view.appendChild(wrap);
+
+  const qEl = byId("eaQ");
+  const btnEl = byId("eaSearchBtn");
+  const listEl = byId("eaList");
+  const cntEl = byId("eaCount");
+  const pagerEl = byId("eaPager");
+
+  if (qEl) qEl.value = ui.q;
+
+  function filtered(){
+    const q = ui.q.trim().toLowerCase();
+    if (!q) return all.slice();
+    return all.filter(a =>
+      String(a.title || "").toLowerCase().includes(q)
+    );
+  }
+
+  function render(){
+    const items = filtered();
+    const total = items.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    ui.page = Math.min(Math.max(1, ui.page), totalPages);
+    saveUI();
+
+    if (cntEl) cntEl.textContent = `전체 ${total}건`;
+
+    const start = (ui.page - 1) * PAGE_SIZE;
+    const pageItems = items.slice(start, start + PAGE_SIZE);
+
+    listEl.innerHTML = "";
+
+    // header
+    listEl.appendChild(dom(`
+      <div class="bRow bHead">
+        <div class="bCell bNoCol">상태</div>
+        <div class="bCell bTitleCol">제목</div>
+        <div class="bCell bAtCol">기안일</div>
+        <div class="bCell bViewCol">기안자</div>
+      </div>
+    `));
+
+    if (!pageItems.length){
+      listEl.appendChild(dom(`<div class="bEmpty">표시할 결재 문서가 없습니다</div>`));
+    } else {
+      pageItems.forEach(d=>{
+        listEl.appendChild(dom(`
+          <div class="bRow">
+            <div class="bCell bNoCol">
+              <span class="bBadge">${escapeHtml(d.status || "")}</span>
             </div>
-          `));
-        });
-      }
+            <div class="bCell bTitleCol">
+              <div class="bTitle">${escapeHtml(d.title || "")}</div>
+              <div class="bSub">${escapeHtml(d.from || "-")}</div>
+            </div>
+            <div class="bCell bAtCol">${escapeHtml(d.at || "-")}</div>
+            <div class="bCell bViewCol">${escapeHtml(d.from || "-")}</div>
+          </div>
+        `));
+      });
     }
 
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
+    /* pager */
+    pagerEl.innerHTML = "";
+
+    const mkBtn = (label, page, disabled=false, active=false)=>{
+      const b = document.createElement("button");
+      b.className = "bPageBtn" + (active ? " active" : "");
+      b.textContent = label;
+      b.disabled = disabled;
+      b.onclick = ()=>{ ui.page = page; saveUI(); render(); };
+      return b;
+    };
+
+    pagerEl.appendChild(mkBtn("«", 1, ui.page === 1));
+    pagerEl.appendChild(mkBtn("‹", ui.page - 1, ui.page === 1));
+
+    for (let i=1;i<=totalPages;i++){
+      pagerEl.appendChild(mkBtn(String(i), i, false, i === ui.page));
+    }
+
+    pagerEl.appendChild(mkBtn("›", ui.page + 1, ui.page === totalPages));
+    pagerEl.appendChild(mkBtn("»", totalPages, ui.page === totalPages));
   }
+
+  function doSearch(){
+    ui.q = qEl ? qEl.value : "";
+    ui.page = 1;
+    saveUI();
+    render();
+  }
+
+  if (btnEl) btnEl.onclick = doSearch;
+  if (qEl){
+    qEl.addEventListener("keydown", e=>{ if (e.key === "Enter") doSearch(); });
+    qEl.addEventListener("input", ()=>{ ui.q = qEl.value; saveUI(); render(); });
+  }
+
+  render();
+}
+
 
   function viewSchedule(db, sub){
     if (!els.view) return;
