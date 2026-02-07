@@ -197,6 +197,7 @@ const MENU = [
     label: "업무관리",
     kind: "group",
     items: [
+      { key:"work-project", label:"프로젝트 작성", type:"route" },
       { key:"work-standards", label:"건설사별 기준서", type:"board" },
       { key:"work-log", label:"업무일지", type:"route" },
       { key:"work-approve", label:"업무일지 승인", type:"route" },
@@ -595,6 +596,180 @@ function computeProjectTotalHours(db, projectId){
       )
     );
   }
+
+  function viewProjectEditor(db){
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 프로젝트 작성");
+
+  db.projects = Array.isArray(db.projects) ? db.projects : [];
+
+  // 선택(수정) 상태
+  let selectedId = db.projects[0]?.projectId || "";
+
+  function projByIdLocal(id){
+    return db.projects.find(p => p.projectId === id) || null;
+  }
+
+  function inputRow(label, inputNode){
+    return el("div", { class:"wtPartRow2" },
+      el("div", { class:"wtPartK2" }, label),
+      el("div", { class:"wtPartV2" }, inputNode)
+    );
+  }
+
+  // 좌측: 프로젝트 목록
+  const left = el("div", { class:"card2", style:"padding:12px 14px;" });
+  const right = el("div", { class:"card2", style:"padding:12px 14px;" });
+  const body = el("div", { class:"wtLayout2" }, left, right);
+
+  const addBtn = el("button", {
+    class:"btn2 primary2",
+    onclick:()=>{
+      const id = (prompt("프로젝트 코드(예: 2025001)") || "").trim();
+      const name = (prompt("프로젝트 명칭") || "").trim();
+      if (!id) return toast("프로젝트 코드를 입력해 주세요.");
+      if (db.projects.some(p => (p.projectId === id || p.projectCode === id))) return toast("동일 코드가 이미 존재합니다.");
+      if (!name) return toast("프로젝트 명칭을 입력해 주세요.");
+
+      db.projects.unshift({
+        projectId: id,
+        projectCode: id,
+        projectName: name,
+        buildingUse: "",
+        grossArea: "",
+        structureType: "",
+        startDate: "",
+        endDate: ""
+      });
+      saveDB(db);
+      selectedId = id;
+      render(); // 메뉴/화면 갱신
+    }
+  }, "+ 새 프로젝트");
+
+  const topBar = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;" },
+    el("div", {},
+      el("div", { style:"font-weight:1100;" }, "프로젝트 기본정보 작성/관리"),
+      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" },
+        "‘프로젝트 소요시간’ 화면에서 표시하는 기본정보(용도/연면적/구조형식 등)를 여기서 입력합니다."
+      )
+    ),
+    addBtn
+  );
+
+  view.appendChild(topBar);
+  view.appendChild(body);
+
+  function rerender(){
+    // ---- LEFT
+    left.innerHTML = "";
+    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+
+    if (!db.projects.length){
+      left.appendChild(el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n오른쪽 상단 ‘+ 새 프로젝트’로 추가하세요."));
+      right.innerHTML = "";
+      right.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 생성하면 편집 화면이 표시됩니다."));
+      return;
+    }
+
+    if (!selectedId || !projByIdLocal(selectedId)) selectedId = db.projects[0].projectId;
+
+    const listHost = el("div", { class:"wtList2" });
+    db.projects.forEach(p=>{
+      const active = (p.projectId === selectedId);
+      listHost.appendChild(
+        el("button", {
+          class:`wtProjItem2 ${active ? "active" : ""}`,
+          onclick:()=>{ selectedId = p.projectId; rerender(); }
+        },
+          el("div", { class:"wtProjTitle2" }, `${p.projectCode||p.projectId} (${p.projectName||""})`.trim()),
+          el("div", { class:"wtProjMeta2" }, `용도: ${p.buildingUse||"-"} · 연면적: ${p.grossArea||"-"} · 구조: ${p.structureType||"-"}`)
+        )
+      );
+    });
+    left.appendChild(listHost);
+
+    // ---- RIGHT (EDITOR)
+    const p = projByIdLocal(selectedId);
+    right.innerHTML = "";
+    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
+
+    const codeInput = el("input", { class:"btn2", type:"text", value: p.projectCode || p.projectId || "", placeholder:"프로젝트 코드" });
+    const nameInput = el("input", { class:"btn2", type:"text", value: p.projectName || "", placeholder:"프로젝트 명칭" });
+    const useInput  = el("input", { class:"btn2", type:"text", value: p.buildingUse || "", placeholder:"예) 물류센터, 주상복합 등" });
+    const areaInput = el("input", { class:"btn2", type:"text", value: p.grossArea || "", placeholder:"예) 123,456 ㎡" });
+    const stInput   = el("input", { class:"btn2", type:"text", value: p.structureType || "", placeholder:"예) RC / S / SRC 등" });
+    const sDate     = el("input", { class:"btn2", type:"date", value: p.startDate || "" });
+    const eDate     = el("input", { class:"btn2", type:"date", value: p.endDate || "" });
+
+    const saveBtn = el("button", {
+      class:"btn2 primary2",
+      onclick:()=>{
+        const newCode = (codeInput.value || "").trim();
+        const newName = (nameInput.value || "").trim();
+        if (!newCode) return toast("프로젝트 코드는 필수입니다.");
+        if (!newName) return toast("프로젝트 명칭은 필수입니다.");
+
+        // 코드 변경 시 중복 체크
+        const dup = db.projects.some(x =>
+          x.projectId !== p.projectId &&
+          (x.projectId === newCode || x.projectCode === newCode)
+        );
+        if (dup) return toast("동일 코드가 이미 존재합니다.");
+
+        // 저장
+        p.projectCode = newCode;
+        p.projectName = newName;
+        p.buildingUse = (useInput.value || "").trim();
+        p.grossArea = (areaInput.value || "").trim();
+        p.structureType = (stInput.value || "").trim();
+        p.startDate = sDate.value || "";
+        p.endDate = eDate.value || "";
+
+        // projectId는 내부키이므로 여기서는 유지(코드 변경과 분리)
+        saveDB(db);
+        toast("저장 완료");
+        render();
+      }
+    }, "저장");
+
+    const delBtn = el("button", {
+      class:"btn2 ghost2",
+      onclick:()=>{
+        if (!confirm("이 프로젝트를 삭제할까요? (소요시간/업무일지 데이터는 남을 수 있습니다)")) return;
+        db.projects = db.projects.filter(x => x.projectId !== p.projectId);
+        saveDB(db);
+        toast("삭제 완료");
+        selectedId = db.projects[0]?.projectId || "";
+        render();
+      }
+    }, "삭제");
+
+    right.appendChild(
+      el("div", { class:"stack" },
+        el("div", { class:"card2", style:"padding:12px 14px;" },
+          el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
+            el("div", { style:"font-weight:1100;" }, "기본정보"),
+            el("div", { style:"display:flex;gap:8px;" }, delBtn, saveBtn)
+          ),
+          el("div", { style:"display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;" },
+            codeInput, nameInput
+          ),
+          el("div", { style:"display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;" },
+            useInput, areaInput, stInput
+          ),
+          el("div", { style:"display:grid;grid-template-columns:1fr 1fr;gap:10px;" },
+            sDate, eDate
+          )
+        )
+      )
+    );
+  }
+
+  rerender();
+}
+
 
   /***********************
    * 기존 뷰(업무일지/승인/소요시간/공정관리/체크리스트)
@@ -1137,6 +1312,7 @@ const totalDays  = computeProjectTotalDays(db, p.projectId);
     if (key === "home") return viewHome(db);
 
     // 업무관리
+    if (key === "work-project") return viewProjectEditor(db);   // ✅ 추가
     if (key === "work-standards") return viewBoard(db, "work-standards", "업무관리 · 건설사별 기준서");
     if (key === "work-log") return viewLog(db);
     if (key === "work-approve") return viewApprove(db);
