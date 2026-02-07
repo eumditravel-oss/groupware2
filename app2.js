@@ -600,9 +600,10 @@ function computeProjectTotalHours(db, projectId){
    * 기존 뷰(업무일지/승인/소요시간/공정관리/체크리스트)
    ***********************/
   function makeEmptyEntry(db){
-    const p = db.projects?.[0]?.projectId || "";
-    return { projectId: p, category:"구조", process: PROCESS_MASTER["구조"][0], ratio:50, content:"" };
-  }
+  const p = db.projects?.[0]?.projectId || "";
+  return { projectId: p, category:"구조", process: PROCESS_MASTER["구조"][0], hours: 1, content:"" };
+}
+
 
   function buildProjectSelect(db, value, onChange){
     const s = el("select", { class:"btn2", onchange:(e)=>onChange?.(e.target.value) });
@@ -689,8 +690,8 @@ function computeProjectTotalHours(db, projectId){
           delBtn
         ),
         el("div", { style:"display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;" },
-          projectSel, ratio
-        ),
+    projectSel, hours
+  ),
         el("div", { style:"display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:10px;" },
           catSel, procSel
         ),
@@ -824,7 +825,7 @@ function computeProjectTotalHours(db, projectId){
         ...arr.map(l=>{
           const p = projById(db, l.projectId);
           return el("div", { style:"border:1px solid var(--line);border-radius:12px;padding:10px;" },
-            el("div", { style:"font-weight:1100;" }, `${p?.projectName||"프로젝트"} · ${l.category}/${l.process} · ${l.ratio}%`),
+            el("div", { style:"font-weight:1100;" }, `${p?.projectName||"프로젝트"} · ${l.category}/${l.process} · ${Number(l.hours||0)}시간`),
             el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" }, l.content)
           );
         })
@@ -1004,8 +1005,8 @@ const totalDays  = computeProjectTotalDays(db, p.projectId);
           }
         },
           el("div", { class:"wtProjTitle2" }, projText(p) || "(무제)"),
-          el("div", { class:"wtProjMeta2" }, `총 소요일수: ${days}일`)
-        )
+    el("div", { class:"wtProjMeta2" }, `총 투입시간: ${totalHours}시간 / 환산일수: ${totalDays}일`)
+  )
       );
     });
     left.appendChild(listHost);
