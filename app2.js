@@ -1375,48 +1375,272 @@ const topBar = el("div", { class:"card2 wtTop2" },
   view.innerHTML = "";
   setRouteTitle("업무관리 · 종합 공정관리");
 
-  const LS_YEAR = "APP2_WORKSCHEDULE_YEAR";
-  const cy = new Date().getFullYear();
-  let year = (localStorage.getItem(LS_YEAR) || String(cy));
+  const logs = Array.isArray(db.logs) ? db.logs : [];
+  const projects = Array.isArray(db.projects) ? db.projects : [];
+  const users = Array.isArray(db.users) ? db.users : [];
 
-  function buildYearSelect(){
-    const s = el("select", {
-      class:"yearSelect2",
-      onchange:(e)=>{
-        year = e.target.value;
-        localStorage.setItem(LS_YEAR, year);
-        toast(`${year}년 선택`);
-      }
-    });
-
-    for (let y=cy-3; y<=cy+1; y++){
-      const yy = String(y);
-      const o = el("option", { value:yy }, `${yy}년`);
-      if (yy === year) o.selected = true;
-      s.appendChild(o);
-    }
-    return s;
+  function projName(pid){
+    const p = projects.find(x=>x.projectId === pid);
+    if (!p) return pid || "-";
+    const code = p.projectCode || p.projectId || "";
+    const name = p.projectName || "";
+    return `${code} ${name}`.trim();
+  }
+  function userName(uid){
+    return (users.find(u=>u.userId === uid)?.name) || uid || "-";
   }
 
-  // ✅ 상단바(좌측: 검색/설명 영역, 우측: 년도 드롭다운)
-  const topBar = el("div", {
-    class:"card2",
-    style:"padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;"
-  },
-    el("div", { style:"font-weight:1100;" }, "종합 공정관리"),
-    buildYearSelect() // ✅ 우측 빨간영역 = 년도 드롭다운
-  );
+  // -----------------------
+  // 상태: year / month
+  // -----------------------
+  const LS_Y = "APP2_SCHEDULE_YEAR";
+  const LS_M = "APP2_SCHEDULE_MONTH";
 
-  view.appendChild(topBar);
+  const now = new Date();
+  let year  = Number(localStorage.getItem(LS_Y) || "") || now.getFullYear();
+  let month = Number(localStorage.getItem(LS_M) || "") || (now.getMonth()+1); // 1~12
 
-  // 기존 placeholder 유지
-  view.appendChild(
-    el("div", { class:"card2", style:"padding:14px;" },
-      el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "캘린더(placeholder)"),
-      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "요청 시 캘린더 UI를 확장합니다.")
+  function saveYM(){
+    localStorage.setItem(LS_Y, String(year));
+    localStorage.setItem(LS_M, String(month));
+  }
+
+  // -----------------------
+  // 필터: 업무일지 포함 범위
+  // - "업무일지에 작성된 내용" => rejected 제외, submitted/approved 포함
+  // -----------------------
+  function isIncludedStatus(s){
+    return s !== "rejected";
+  }
+
+  // YYYY-MM-DD
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function ymd(y,m,d){ return `${y}-${pad2(m)}-${pad2(d)}`; }
+
+  function parseYMD(dateStr){
+    // 기대: "YYYY-MM-DD"
+    if (!dateStr || typeof dateStr !== "string") return null;
+    const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    return { y:Number(m[1]), mo:Number(m[2]), d:Number(m[3]) };
+  }
+
+  // -----------------------
+  // 상단: 제목 + (우) 년도 드롭박스 + 월 드롭박스
+  // -----------------------
+  function buildYearSelect(){
+    // logs/프로젝트에서 년도 후보 만들기 (없으면 현재년도)
+    const years = [];
+
+    // logs.date 기반
+    for (const l of logs){
+      if (!isIncludedStatus(l.status)) continue;
+      const p = parseYMD(l.date);
+      if (p) years.push(p.y);
+    }
+    // 프로젝트 코드/ID 앞 4자리도 후보
+    for (const p of projects){
+      const code = String(p.projectCode || p.projectId || "").slice(0,4);
+      if (/^\d{4}$/.test(code)) years.push(Number(code));
+    }
+
+    const uniq = Array.from(new Set(years.filter(Number.isFinite))).sort((a,b)=>b-a);
+    if (!uniq.length) uniq.push(now.getFullYear());
+    if (!uniq.includes(year)) year = uniq[0];
+
+    const sel = el("select", {
+      class:"btn2 calSelect2",
+      onchange:(e)=>{
+        year = Number(e.target.value);
+        saveYM();
+        rerender();
+      }
+    });
+    uniq.forEach(y=>{
+      const opt = el("option", { value:String(y) }, `${y}년`);
+      if (y === year) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    return sel;
+  }
+
+  function buildMonthSelect(){
+    const sel = el("select", {
+      class:"btn2 calSelect2",
+      onchange:(e)=>{
+        month = Number(e.target.value);
+        saveYM();
+        rerender();
+      }
+    });
+    for (let i=1;i<=12;i++){
+      const opt = el("option", { value:String(i) }, `${i}월`);
+      if (i === month) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    return sel;
+  }
+
+  const yearSel = buildYearSelect();
+  const monthSel = buildMonthSelect();
+
+  const topCard = el("div", { class:"card2 calTop2" },
+    el("div", { class:"calTopRow2" },
+      el("div", { class:"calTitle2" }, "종합 공정관리"),
+      el("div", { class:"calCtrls2" }, yearSel, monthSel)
     )
   );
+
+  const calCard = el("div", { class:"card2", style:"padding:12px 14px;" });
+  view.appendChild(topCard);
+  view.appendChild(calCard);
+
+  // -----------------------
+  // 렌더: 달력 그리드 + 띠지
+  // -----------------------
+  function buildLogMapForMonth(y, m){
+    // key: YYYY-MM-DD -> logs[]
+    const map = new Map();
+
+    for (const l of logs){
+      if (!isIncludedStatus(l.status)) continue;
+      const p = parseYMD(l.date);
+      if (!p) continue;
+      if (p.y !== y || p.mo !== m) continue;
+
+      const k = l.date;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(l);
+    }
+
+    // 날짜별 정렬: submittedAt/approvedAt/생성순 (없으면 content)
+    for (const [k, arr] of map.entries()){
+      arr.sort((a,b)=>{
+        const ta = (a.approvedAt || a.submittedAt || "").toString();
+        const tb = (b.approvedAt || b.submittedAt || "").toString();
+        return ta.localeCompare(tb);
+      });
+    }
+    return map;
+  }
+
+  function openDayModal(dateStr, dayLogs){
+    // 상세: 해당 날짜의 업무일지 내용들
+    const body = el("div", { class:"calModalBody2" });
+
+    const head = el("div", { class:"calModalHead2" },
+      el("div", { class:"calModalDate2" }, dateStr),
+      el("div", { class:"calModalHint2" }, `총 ${dayLogs.length}건`)
+    );
+
+    const list = el("div", { class:"calModalList2" },
+      ...dayLogs.map(l=>{
+        const status = l.status || "";
+        const statusText = status === "approved" ? "승인" : (status === "submitted" ? "제출" : status);
+        const statusCls = status === "approved" ? "ok" : "wait";
+
+        return el("div", { class:"calModalItem2" },
+          el("div", { class:"calModalLine1_2" },
+            el("div", { class:`calPill2 ${statusCls}` }, statusText),
+            el("div", { class:"calModalProj2" }, projName(l.projectId)),
+            el("div", { class:"calModalMeta2" }, `${l.category || "-"} / ${l.process || "-"} · ${Number(l.hours||0)}시간`)
+          ),
+          el("div", { class:"calModalLine2_2" }, `작성: ${userName(l.writerId)} · 제출/승인: ${(l.approvedAt || l.submittedAt || "-")}`),
+          el("div", { class:"calModalContent2" }, (l.content || "").trim() || "(내용 없음)")
+        );
+      })
+    );
+
+    body.appendChild(head);
+    body.appendChild(list);
+
+    modalOpen("업무일지 상세", body);
+  }
+
+  function rerender(){
+    saveYM();
+
+    const logMap = buildLogMapForMonth(year, month);
+
+    // 달력 계산
+    const first = new Date(year, month-1, 1);
+    const last  = new Date(year, month, 0);
+    const daysInMonth = last.getDate();
+    const startDow = first.getDay(); // 0(일)~6(토)
+
+    calCard.innerHTML = "";
+
+    // 요일 헤더
+    const dow = ["일","월","화","수","목","금","토"];
+    const dowRow = el("div", { class:"calDow2" },
+      ...dow.map(t => el("div", { class:"calDowCell2" }, t))
+    );
+
+    const grid = el("div", { class:"calGrid2" });
+
+    // 빈칸(이전달)
+    for (let i=0;i<startDow;i++){
+      grid.appendChild(el("div", { class:"calCell2 muted" }));
+    }
+
+    // 날짜 셀
+    for (let d=1; d<=daysInMonth; d++){
+      const dateStr = ymd(year, month, d);
+      const dayLogs = logMap.get(dateStr) || [];
+
+      const ribbons = el("div", { class:"calRibbons2" },
+        ...dayLogs.slice(0,3).map(l=>{
+          const status = l.status || "";
+          const cls = status === "approved" ? "ok" : "wait";
+          const text = `${projName(l.projectId)} · ${l.category||"-"}/${l.process||"-"} · ${Number(l.hours||0)}h`;
+          return el("div", { class:`calRibbon2 ${cls}`, title: (l.content||"").trim() }, text);
+        })
+      );
+
+      const more = (dayLogs.length > 3)
+        ? el("div", { class:"calMore2" }, `+${dayLogs.length-3} more`)
+        : null;
+
+      const cell = el("button", {
+        class:`calCell2 ${dayLogs.length ? "has" : ""}`,
+        onclick:()=>{
+          if (!dayLogs.length) return;
+          openDayModal(dateStr, dayLogs);
+        },
+        type:"button"
+      },
+        el("div", { class:"calDayTop2" },
+          el("div", { class:"calDayNum2" }, String(d)),
+          dayLogs.length ? el("div", { class:"calCount2" }, String(dayLogs.length)) : el("div")
+        ),
+        ribbons,
+        more
+      );
+
+      grid.appendChild(cell);
+    }
+
+    // 뒷칸 채우기(그리드 정렬)
+    const totalCells = startDow + daysInMonth;
+    const tail = (7 - (totalCells % 7)) % 7;
+    for (let i=0;i<tail;i++){
+      grid.appendChild(el("div", { class:"calCell2 muted" }));
+    }
+
+    calCard.appendChild(dowRow);
+    calCard.appendChild(grid);
+
+    // 안내 문구
+    calCard.appendChild(
+      el("div", { class:"muted2", style:"padding:10px 0 0 0;" },
+        "날짜 칸의 띠지를 클릭하면 해당 날짜의 업무일지 상세가 표시됩니다. (반려 제외, 제출/승인 포함)"
+      )
+    );
+  }
+
+  rerender();
 }
+
 
 
   function viewChecklist(db, teamLabel){
