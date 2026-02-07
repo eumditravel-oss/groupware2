@@ -1661,3 +1661,18 @@ header.topbar .topRight{
   .bViewCol{ display:none; }
 }
 
+/* =========================
+   SCHEDULE FILTER (일정관리 상단 필터)
+========================= */
+.schedFilterBtn{
+  border-radius: 999px !important;
+  padding: 7px 12px !important;
+  font-weight: 1000 !important;
+}
+.schedFilterBtn.active{
+  border-color: rgba(240,138,36,.45) !important;
+  background: rgba(240,138,36,.12) !important;
+  color: var(--accent) !important;
+}
+
+
