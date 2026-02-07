@@ -822,11 +822,9 @@ function renderSide2(db){
   // -----------------------
   const LS_SEL = "APP2_WORKTIME_SELECTED";
   const LS_Q   = "APP2_WORKTIME_QUERY";
-  const LS_F   = "APP2_WORKTIME_FILTER"; // "all" | "구조" | "토목ㆍ조경" | "마감"
-
+  
   let query = (localStorage.getItem(LS_Q) || "").trim();
-  let filter = (localStorage.getItem(LS_F) || "all");
-  let selectedId = (localStorage.getItem(LS_SEL) || "");
+    let selectedId = (localStorage.getItem(LS_SEL) || "");
 
   // -----------------------
   // helpers
@@ -849,15 +847,7 @@ function renderSide2(db){
     return `${code} ${name}`.trim();
   }
 
-  // 승인된 로그 기준으로 프로젝트가 어떤 파트 작업을 갖는지 추정(데이터에 별도 태그가 없어서)
-  function projectHasPart(projectId, part){
-    return logs.some(l => l.status === "approved" && l.projectId === projectId && (l.category || "") === part);
-  }
-
-  function projectMatchesFilter(projectId){
-    if (filter === "all") return true;
-    return projectHasPart(projectId, filter);
-  }
+  
 
   function projectMatchesQuery(p){
     if (!query) return true;
@@ -923,16 +913,11 @@ function renderSide2(db){
   }
 
   const topBar = el("div", { class:"card2 wtTop2" },
-    el("div", { class:"wtTopRow2" },
-      qInput,
-      el("div", { class:"wtChips2" },
-        filterChip("전체", "all"),
-        filterChip("구조", "구조"),
-        filterChip("토목ㆍ조경", "토목ㆍ조경"),
-        filterChip("마감", "마감")
-      )
-    )
-  );
+  el("div", { class:"wtTopRow2" },
+    qInput
+  )
+);
+
 
   // -----------------------
   // Layout containers
@@ -951,8 +936,8 @@ function renderSide2(db){
   function rerender(){
     // 1) list filtering
     const list = projects
-      .filter(p => projectMatchesQuery(p))
-      .filter(p => projectMatchesFilter(p.projectId));
+  .filter(p => projectMatchesQuery(p));
+
 
     if (!list.length){
       left.innerHTML = "";
