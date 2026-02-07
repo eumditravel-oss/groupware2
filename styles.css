@@ -1446,4 +1446,218 @@ header.topbar .topRight{
   .gRowEA .gColAt{ display:none; }
 }
 
+/* =========================
+   BOARD (공지사항 스타일)
+========================= */
+.boardWrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.boardHead{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.boardHeadTitle{
+  font-weight: 1100;
+  font-size: 18px;
+  letter-spacing: -0.2px;
+  color: rgba(0,0,0,.86);
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.boardHeadTitle::before{
+  content:"";
+  width: 6px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: .95;
+}
+
+.boardSearchRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap: wrap;
+}
+
+.boardSel{
+  height: 36px;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.92);
+  border-radius: 12px;
+  padding: 0 12px;
+  font-weight: 950;
+  min-width: 120px;
+}
+
+.boardQ{
+  flex: 1 1 320px;
+  min-width: 220px;
+  height: 36px;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.92);
+  border-radius: 12px;
+  padding: 0 12px;
+  font-weight: 900;
+  outline: none;
+}
+
+.boardBtn{
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-weight: 1000;
+}
+
+.boardCard{
+  padding: 12px 0;
+  overflow:hidden;
+}
+
+.boardTopLine{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 0 14px 10px;
+}
+
+.boardCount{
+  font-weight: 900;
+  font-size: 13px;
+  color: rgba(0,0,0,.58);
+}
+
+.boardList{
+  display:flex;
+  flex-direction:column;
+}
+
+.bRow{
+  display:grid;
+  grid-template-columns: 84px 1fr 140px 90px;
+  align-items:center;
+  gap: 0;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.96);
+  cursor:pointer;
+}
+.bRow:hover{
+  background: rgba(245,245,247,.92);
+}
+.bHead{
+  cursor: default;
+  background: rgba(255,255,255,.92);
+  border-top: 0;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.bHead:hover{ background: rgba(255,255,255,.92); }
+
+.bCell{
+  min-width:0;
+  overflow:hidden;
+}
+
+.bNoCol{ text-align:left; }
+.bAtCol{ text-align:right; font-weight: 900; font-size: 12.5px; color: rgba(0,0,0,.62); }
+.bViewCol{ text-align:right; font-weight: 900; font-size: 12.5px; color: rgba(0,0,0,.62); }
+
+.bTitle{
+  font-weight: 1000;
+  font-size: 13px;
+  color: rgba(0,0,0,.84);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bSub{
+  margin-top: 4px;
+  font-weight: 900;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(240,138,36,.35);
+  background: rgba(240,138,36,.10);
+  color: var(--accent);
+  font-weight: 1000;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bNo{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(0,0,0,.04);
+  font-weight: 1000;
+  font-size: 12px;
+  color: rgba(0,0,0,.72);
+  white-space: nowrap;
+}
+
+.bEmpty{
+  padding: 18px 14px;
+  color: var(--muted);
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.boardPager{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding: 14px;
+  border-top: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.92);
+}
+
+.bPageBtn{
+  min-width: 34px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.94);
+  cursor:pointer;
+  font-weight: 1000;
+  font-size: 12.5px;
+}
+.bPageBtn:disabled{
+  opacity: .45;
+  cursor: default;
+}
+.bPageBtn.active{
+  border-color: rgba(240,138,36,.45);
+  background: rgba(240,138,36,.12);
+  color: var(--accent);
+}
+
+@media (max-width: 980px){
+  .bRow{
+    grid-template-columns: 78px 1fr 90px;
+  }
+  .bViewCol{ display:none; }
+}
 
