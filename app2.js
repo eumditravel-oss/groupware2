@@ -597,7 +597,7 @@ function computeProjectTotalHours(db, projectId){
     );
   }
 
-  /* ✅ REPLACE: viewProjectEditor(db) - FULL (좌측 리스트 / 우측 상세) */
+  /* ✅ REPLACE: viewProjectEditor(db) - FULL (상단 상세 / 하단 리스트) */
 function viewProjectEditor(db){
   const view = $("#view2");
   view.innerHTML = "";
@@ -648,99 +648,78 @@ function viewProjectEditor(db){
     addBtn
   );
 
-  // ✅ 본문 레이아웃: 좌측 리스트 / 우측 상세 (소요시간 화면과 동일한 배치)
-  const left  = el("div", { class:"wtLeft2" });
-  const right = el("div", { class:"wtRight2" });
-  const grid  = el("div", { class:"wtGrid2" }, left, right);
+  // ✅ 본문 카드 2개: (상단) 상세 입력 / (하단) 리스트
+  const detailCard = el("div", { class:"card2", style:"padding:0;margin-bottom:12px;" });
+  const listCard   = el("div", { class:"card2", style:"padding:0;" });
 
   view.appendChild(topBar);
-  view.appendChild(grid);
+  view.appendChild(detailCard);
+  view.appendChild(listCard);
 
   function rerender(){
-    // ----- LEFT (리스트)
-    left.innerHTML = "";
-    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+    // ---------- (상단) DETAIL ----------
+    detailCard.innerHTML = "";
+    detailCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
 
     if (!db.projects.length){
-      left.appendChild(el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n상단 ‘+ 새 프로젝트’로 추가하세요."));
-      right.innerHTML = "";
-      right.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 생성하면 편집 화면이 표시됩니다."));
-      return;
-    }
-
-    if (!selectedId || !projByIdLocal(selectedId)) selectedId = db.projects[0].projectId;
-
-    const listHost = el("div", { class:"wtList2" });
-    db.projects.forEach(p=>{
-      const active = (p.projectId === selectedId);
-      listHost.appendChild(
-        el("button", {
-          class:`wtProjItem2 ${active ? "active" : ""}`,
-          onclick:()=>{ selectedId = p.projectId; rerender(); }
-        },
-          el("div", { class:"wtProjTitle2" }, `${p.projectCode||p.projectId} (${p.projectName||""})`.trim()),
-          el("div", { class:"wtProjMeta2" }, `용도: ${p.buildingUse||"-"} · 연면적: ${p.grossArea||"-"} · 구조: ${p.structureType||"-"}`)
-        )
+      detailCard.appendChild(
+        el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n상단 ‘+ 새 프로젝트’로 추가하세요.")
       );
-    });
-    left.appendChild(listHost);
+    } else {
+      if (!selectedId || !projByIdLocal(selectedId)) selectedId = db.projects[0].projectId;
 
-    // ----- RIGHT (상세 입력)
-    const p = projByIdLocal(selectedId);
-    right.innerHTML = "";
-    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
+      const p = projByIdLocal(selectedId);
 
-    const codeInput = el("input", { class:"btn2", type:"text", value: p.projectCode || p.projectId || "", placeholder:"프로젝트 코드" });
-    const nameInput = el("input", { class:"btn2", type:"text", value: p.projectName || "", placeholder:"프로젝트 명칭" });
-    const useInput  = el("input", { class:"btn2", type:"text", value: p.buildingUse || "", placeholder:"예) 물류센터, 주상복합 등" });
-    const areaInput = el("input", { class:"btn2", type:"text", value: p.grossArea || "", placeholder:"예) 123,456 ㎡" });
-    const stInput   = el("input", { class:"btn2", type:"text", value: p.structureType || "", placeholder:"예) RC / S / SRC 등" });
-    const sDate     = el("input", { class:"btn2", type:"date", value: p.startDate || "" });
-    const eDate     = el("input", { class:"btn2", type:"date", value: p.endDate || "" });
+      const codeInput = el("input", { class:"btn2", type:"text", value: p.projectCode || p.projectId || "", placeholder:"프로젝트 코드" });
+      const nameInput = el("input", { class:"btn2", type:"text", value: p.projectName || "", placeholder:"프로젝트 명칭" });
+      const useInput  = el("input", { class:"btn2", type:"text", value: p.buildingUse || "", placeholder:"예) 물류센터, 주상복합 등" });
+      const areaInput = el("input", { class:"btn2", type:"text", value: p.grossArea || "", placeholder:"예) 123,456 ㎡" });
+      const stInput   = el("input", { class:"btn2", type:"text", value: p.structureType || "", placeholder:"예) RC / S / SRC 등" });
+      const sDate     = el("input", { class:"btn2", type:"date", value: p.startDate || "" });
+      const eDate     = el("input", { class:"btn2", type:"date", value: p.endDate || "" });
 
-    const saveBtn = el("button", {
-      class:"btn2 primary2",
-      onclick:()=>{
-        const newCode = (codeInput.value || "").trim();
-        const newName = (nameInput.value || "").trim();
-        if (!newCode) return toast("프로젝트 코드는 필수입니다.");
-        if (!newName) return toast("프로젝트 명칭은 필수입니다.");
+      const saveBtn = el("button", {
+        class:"btn2 primary2",
+        onclick:()=>{
+          const newCode = (codeInput.value || "").trim();
+          const newName = (nameInput.value || "").trim();
+          if (!newCode) return toast("프로젝트 코드는 필수입니다.");
+          if (!newName) return toast("프로젝트 명칭은 필수입니다.");
 
-        const dup = db.projects.some(x =>
-          x.projectId !== p.projectId &&
-          (x.projectId === newCode || x.projectCode === newCode)
-        );
-        if (dup) return toast("동일 코드가 이미 존재합니다.");
+          const dup = db.projects.some(x =>
+            x.projectId !== p.projectId &&
+            (x.projectId === newCode || x.projectCode === newCode)
+          );
+          if (dup) return toast("동일 코드가 이미 존재합니다.");
 
-        p.projectCode = newCode;
-        p.projectName = newName;
-        p.buildingUse = (useInput.value || "").trim();
-        p.grossArea = (areaInput.value || "").trim();
-        p.structureType = (stInput.value || "").trim();
-        p.startDate = sDate.value || "";
-        p.endDate = eDate.value || "";
+          p.projectCode = newCode;
+          p.projectName = newName;
+          p.buildingUse = (useInput.value || "").trim();
+          p.grossArea = (areaInput.value || "").trim();
+          p.structureType = (stInput.value || "").trim();
+          p.startDate = sDate.value || "";
+          p.endDate = eDate.value || "";
 
-        saveDB(db);
-        toast("저장 완료");
-        render();
-      }
-    }, "저장");
+          saveDB(db);
+          toast("저장 완료");
+          render();
+        }
+      }, "저장");
 
-    const delBtn = el("button", {
-      class:"btn2 ghost2",
-      onclick:()=>{
-        if (!confirm("이 프로젝트를 삭제할까요? (소요시간/업무일지 데이터는 남을 수 있습니다)")) return;
-        db.projects = db.projects.filter(x => x.projectId !== p.projectId);
-        saveDB(db);
-        toast("삭제 완료");
-        selectedId = db.projects[0]?.projectId || "";
-        render();
-      }
-    }, "삭제");
+      const delBtn = el("button", {
+        class:"btn2 ghost2",
+        onclick:()=>{
+          if (!confirm("이 프로젝트를 삭제할까요? (소요시간/업무일지 데이터는 남을 수 있습니다)")) return;
+          db.projects = db.projects.filter(x => x.projectId !== p.projectId);
+          saveDB(db);
+          toast("삭제 완료");
+          selectedId = db.projects[0]?.projectId || "";
+          render();
+        }
+      }, "삭제");
 
-    right.appendChild(
-      el("div", { class:"stack" },
-        el("div", { class:"card2", style:"padding:12px 14px;" },
+      detailCard.appendChild(
+        el("div", { style:"padding:12px 14px;" },
           el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
             el("div", { style:"font-weight:1100;" }, "기본정보"),
             el("div", { style:"display:flex;gap:8px;" }, delBtn, saveBtn)
@@ -755,12 +734,39 @@ function viewProjectEditor(db){
             sDate, eDate
           )
         )
-      )
-    );
+      );
+    }
+
+    // ---------- (하단) LIST ----------
+    listCard.innerHTML = "";
+    listCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+
+    if (!db.projects.length){
+      listCard.appendChild(
+        el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.")
+      );
+      return;
+    }
+
+    const listHost = el("div", { class:"wtList2" });
+    db.projects.forEach(p=>{
+      const active = (p.projectId === selectedId);
+      listHost.appendChild(
+        el("button", {
+          class:`wtProjItem2 ${active ? "active" : ""}`,
+          onclick:()=>{ selectedId = p.projectId; rerender(); }
+        },
+          el("div", { class:"wtProjTitle2" }, `${p.projectCode||p.projectId} (${p.projectName||""})`.trim()),
+          el("div", { class:"wtProjMeta2" }, `용도: ${p.buildingUse||"-"} · 연면적: ${p.grossArea||"-"} · 구조: ${p.structureType||"-"}`)
+        )
+      );
+    });
+    listCard.appendChild(listHost);
   }
 
   rerender();
 }
+
 
 
 
