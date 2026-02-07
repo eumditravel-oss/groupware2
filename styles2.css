@@ -515,3 +515,224 @@ body{
 }
 
 
+
+/* =========================
+   Work Time (프로젝트 소요시간)
+========================= */
+
+.wtTop2{
+  padding: 12px 14px;
+}
+.wtTopRow2{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap: wrap;
+}
+.wtSearch2{
+  flex: 1 1 360px;
+  min-width: 260px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 900;
+  outline: none;
+}
+.wtSearch2:focus{
+  box-shadow: 0 0 0 3px rgba(58,122,254,.10);
+  border-color: rgba(58,122,254,.35);
+}
+
+.wtChips2{
+  display:flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.wtChip2{
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.02);
+  border-radius: 999px;
+  padding: 8px 10px;
+  font-weight: 1000;
+  cursor:pointer;
+}
+.wtChip2.active{
+  border-color: rgba(58,122,254,.35);
+  box-shadow: 0 0 0 3px rgba(58,122,254,.12);
+  background: rgba(58,122,254,.10);
+  color: var(--ink);
+}
+
+.wtLayout2{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  min-height: 520px;
+}
+
+.wtLeft2, .wtRight2{
+  overflow: hidden;
+}
+
+.wtList2{
+  padding: 10px;
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+  max-height: calc(100vh - 260px); /* 상단컨트롤 + 여백 고려 */
+  overflow:auto;
+}
+
+.wtProjItem2{
+  width:100%;
+  text-align:left;
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(0,0,0,.015);
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor:pointer;
+}
+.wtProjItem2:hover{
+  background: rgba(0,0,0,.03);
+}
+.wtProjItem2.active{
+  background: rgba(58,122,254,.10);
+  border-color: rgba(58,122,254,.20);
+  box-shadow: 0 0 0 3px rgba(58,122,254,.10);
+}
+.wtProjTitle2{
+  font-weight: 1100;
+  line-height: 1.25;
+}
+.wtProjMeta2{
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wtDetailHead2{
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.wtDetailTitle2{
+  font-weight: 1100;
+  font-size: 16px;
+}
+.wtDetailSub2{
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wtInfoGrid2{
+  margin-top: 10px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+.wtInfoItem2{
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(0,0,0,.015);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.wtInfoLabel2{
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 1000;
+}
+.wtInfoVal2{
+  margin-top: 6px;
+  font-weight: 1100;
+}
+
+.wtDetailBody2{
+  padding: 12px 14px 14px;
+  max-height: calc(100vh - 260px);
+  overflow:auto;
+}
+
+.wtTotal2{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap: 10px;
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.9);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.wtTotalLabel2{
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 1000;
+}
+.wtTotalVal2{
+  font-weight: 1100;
+  font-size: 18px;
+}
+
+.wtPartGrid2{
+  margin-top: 12px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+.wtPartCard2{
+  border: 1px solid rgba(0,0,0,.06);
+  background: rgba(0,0,0,.015);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.wtPartTitle2{
+  font-weight: 1100;
+  margin-bottom: 8px;
+}
+.wtPartRow2{
+  display:flex;
+  justify-content:space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(0,0,0,.06);
+}
+.wtPartRow2:first-of-type{
+  border-top: 0;
+}
+.wtPartRow2.col{
+  flex-direction:column;
+}
+.wtPartK2{
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 1000;
+}
+.wtPartV2{
+  font-weight: 1100;
+}
+.wtPeople2{
+  font-weight: 900;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  color: var(--ink);
+}
+
+.wtEmpty2{
+  padding: 14px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+@media (max-width: 980px){
+  .wtLayout2{ grid-template-columns: 1fr; }
+  .wtList2{ max-height: 40vh; }
+  .wtDetailBody2{ max-height: none; }
+  .wtInfoGrid2{ grid-template-columns: 1fr; }
+  .wtPartGrid2{ grid-template-columns: 1fr; }
+}
+
+
