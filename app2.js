@@ -1570,6 +1570,11 @@ const topBar = el("div", { class:"card2 wtTop2" },
 
     calCard.innerHTML = "";
 
+// ✅ wrapper + overlay 준비
+const wrap = el("div", { class:"calWrap2" });
+calCard.appendChild(wrap);
+
+
     // 요일 헤더
     const dow = ["일","월","화","수","목","금","토"];
     const dowRow = el("div", { class:"calDow2" },
@@ -1629,6 +1634,287 @@ const topBar = el("div", { class:"card2 wtTop2" },
 
     calCard.appendChild(dowRow);
     calCard.appendChild(grid);
+    wrap.appendChild(dowRow);
+wrap.appendChild(grid);
+
+
+    // =======================
+// ✅ 프로젝트 연속 Span Bar (오버레이)
+// - 같은 프로젝트가 연속된 날짜면 가로로 이어진 띠지로 표시
+// - 주(week) 경계에서는 자동으로 분절
+// =======================
+
+function hashColor(str){
+  // 간단 해시 -> HSL 고정 색
+  let h = 0;
+  for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  // 배경/글자색
+  const bg = `hsla(${hue}, 80%, 88%, 0.95)`;
+  const ink = `hsl(${hue}, 55%, 28%)`;
+  return { bg, ink };
+}
+
+function buildPresenceByProject(y, m){
+  // projectId -> Set(YYYY-MM-DD)
+  const mp = new Map();
+
+  for (const l of logs){
+    if (!isIncludedStatus(l.status)) continue;
+    const p = parseYMD(l.date);
+    if (!p) continue;
+    if (p.y !== y || p.mo !== m) continue;
+
+    const pid = l.projectId || "-";
+    if (!mp.has(pid)) mp.set(pid, new Set());
+    mp.get(pid).add(l.date);
+  }
+  return mp;
+}
+
+function dayIndexInMonth(y,m,day){ return day; } // 1~daysInMonth
+
+function toDate(y,m,d){ return new Date(y, m-1, d); }
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function addDays(dt, n){ const x = new Date(dt); x.setDate(x.getDate()+n); return x; }
+
+function buildSegmentsFromSet(y,m,setDates){
+  // setDates: Set(YYYY-MM-DD)
+  const arr = Array.from(setDates)
+    .map(s=>parseYMD(s))
+    .filter(p=>p && p.y===y && p.mo===m)
+    .sort((a,b)=> (a.d-b.d));
+
+  const segs = [];
+  if (!arr.length) return segs;
+
+  let s = arr[0].d;
+  let prev = arr[0].d;
+
+  for (let i=1;i<arr.length;i++){
+    const cur = arr[i].d;
+    if (cur === prev + 1){
+      prev = cur;
+      continue;
+    }
+    segs.push({ startDay:s, endDay:prev });
+    s = cur; prev = cur;
+  }
+  segs.push({ startDay:s, endDay:prev });
+  return segs;
+}
+
+// 달력에서 "주별 row" 계산 (grid 셀 구성과 동일해야 함)
+const weeks = [];
+{
+  // grid는 startDow 만큼 앞 빈칸 후 1~daysInMonth
+  // row = 0.. ; col = 0..6
+  let cell = 0;
+
+  // 앞 빈칸
+  for (let i=0;i<startDow;i++){
+    if (!weeks[Math.floor(cell/7)]) weeks[Math.floor(cell/7)] = [];
+    weeks[Math.floor(cell/7)][cell%7] = null;
+    cell++;
+  }
+  for (let d=1; d<=daysInMonth; d++){
+    if (!weeks[Math.floor(cell/7)]) weeks[Math.floor(cell/7)] = [];
+    weeks[Math.floor(cell/7)][cell%7] = d; // day number
+    cell++;
+  }
+  // 뒤 빈칸
+  const totalCells = startDow + daysInMonth;
+  const tail = (7 - (totalCells % 7)) % 7;
+  for (let i=0;i<tail;i++){
+    if (!weeks[Math.floor(cell/7)]) weeks[Math.floor(cell/7)] = [];
+    weeks[Math.floor(cell/7)][cell%7] = null;
+    cell++;
+  }
+}
+
+// 오버레이 컨테이너
+const overlay = el("div", { class:"calOverlay2" });
+
+// ✅ overlay는 dowRow 높이만큼 내려서 grid 위에 맞춰야 함
+// dowRow가 wrap 첫 번째라서, overlay를 grid와 동일 위치로 두기 위해 paddingTop 적용
+// (gap=8, dowRow가 margin-bottom 8이므로 보정)
+overlay.style.paddingTop = "56px"; // 요일헤더 높이(대략) - 필요시 52~64 조절
+
+wrap.appendChild(overlay);
+
+// projectId -> date presence
+const pres = buildPresenceByProject(year, month);
+
+// 한 주(week)마다 span bar를 배치하기 위해 week overlay를 만들고 stack
+// 레인 충돌 방지: 같은 주에서 bar들이 겹치면 다음 레인으로 내려감
+for (let w=0; w<weeks.length; w++){
+  const weekDays = weeks[w]; // length 7, day or null
+
+  // 이 주에서 가능한 day 범위
+  const minDay = Math.min(...weekDays.filter(Boolean));
+  const maxDay = Math.max(...weekDays.filter(Boolean));
+
+  // 빈 주면 패스
+  if (!isFinite(minDay) || !isFinite(maxDay)) {
+    // 빈 주 영역도 gap 맞추기 위해 빈 블럭 추가
+    overlay.appendChild(el("div", { style:"height:128px;margin-bottom:8px;" }));
+    continue;
+  }
+
+  // ✅ 주 overlay block: 셀 높이와 맞춰야 함 (현재 cell min-height 120 + padding 감안)
+  const weekBlock = el("div", { class:"calWeekOverlay2" });
+  // weekBlock은 7열 grid와 gap만 맞추고, 실제 레인은 아래에서 별도 stack
+
+  // 레인 목록(각 레인은 7열 grid)
+  const lanes = [];
+
+  // helper: 특정 구간이 레인에서 비어있는지 체크
+  function canPlace(laneOcc, c1, c2){
+    for (let c=c1; c<=c2; c++){
+      if (laneOcc[c]) return false;
+    }
+    return true;
+  }
+  function mark(laneOcc, c1, c2){
+    for (let c=c1; c<=c2; c++) laneOcc[c] = true;
+  }
+
+  // 이 주에 걸리는 project segment들 모아서 배치
+  const items = [];
+
+  for (const [pid, setDates] of pres.entries()){
+    const segs = buildSegmentsFromSet(year, month, setDates);
+
+    // 월 단위 segment를 "주 단위"로 쪼개기
+    for (const sg of segs){
+      // 이 주와 겹치는 구간만
+      const a = Math.max(sg.startDay, minDay);
+      const b = Math.min(sg.endDay, maxDay);
+      if (a > b) continue;
+
+      // 주 내부 col 계산
+      const colStart = weekDays.indexOf(a);
+      const colEnd   = weekDays.indexOf(b);
+      if (colStart < 0 || colEnd < 0) continue;
+
+      items.push({ pid, a, b, colStart, colEnd });
+    }
+  }
+
+  // 길이 긴 것부터 배치 (충돌 최소화)
+  items.sort((x,y)=> ( (y.colEnd-y.colStart) - (x.colEnd-x.colStart) ));
+
+  // 배치
+  for (const it of items){
+    // 레인 찾기
+    let placed = false;
+    for (let li=0; li<lanes.length; li++){
+      const lane = lanes[li];
+      if (canPlace(lane.occ, it.colStart, it.colEnd)){
+        const { bg, ink } = hashColor(it.pid);
+        lane.node.appendChild(
+          el("div", {
+            class:"calSpan2",
+            style:`grid-column:${it.colStart+1} / ${it.colEnd+2}; --spanBg:${bg}; --spanInk:${ink};`,
+            onclick:(e)=>{
+              e.stopPropagation();
+              // ✅ span 클릭 시: 해당 구간(주 단위 분절된 구간) 날짜들 상세
+              const dates = [];
+              for (let d=it.a; d<=it.b; d++){
+                const ds = ymd(year, month, d);
+                dates.push(ds);
+              }
+              const rangeLogs = logs
+                .filter(l=>isIncludedStatus(l.status))
+                .filter(l=>l.projectId===it.pid)
+                .filter(l=>dates.includes(l.date));
+              if (!rangeLogs.length) return;
+              modalOpen(
+                `프로젝트 상세 (${projName(it.pid)})`,
+                el("div", {},
+                  el("div", { class:"muted2", style:"padding:0 0 10px 0;" }, `${ymd(year,month,it.a)} ~ ${ymd(year,month,it.b)} (총 ${rangeLogs.length}건)`),
+                  el("div", { class:"calModalList2" },
+                    ...rangeLogs.map(l=>el("div", { class:"calModalItem2" },
+                      el("div", { class:"calModalLine1_2" },
+                        el("div", { class:`calPill2 ${l.status==="approved"?"ok":"wait"}` }, l.status==="approved"?"승인":"제출"),
+                        el("div", { class:"calModalMeta2" }, `${l.date} · ${l.category||"-"} / ${l.process||"-"} · ${Number(l.hours||0)}시간`)
+                      ),
+                      el("div", { class:"calModalContent2" }, (l.content||"").trim() || "(내용 없음)")
+                    ))
+                  )
+                )
+              );
+            }
+          }, el("span", { class:"t" }, projName(it.pid))
+        );
+        mark(lane.occ, it.colStart, it.colEnd);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed){
+      // 새 레인 생성
+      const laneNode = el("div", { class:"calLane2" });
+      const occ = Array(7).fill(false);
+
+      const { bg, ink } = hashColor(it.pid);
+      laneNode.appendChild(
+        el("div", {
+          class:"calSpan2",
+          style:`grid-column:${it.colStart+1} / ${it.colEnd+2}; --spanBg:${bg}; --spanInk:${ink};`,
+          onclick:(e)=>{
+            e.stopPropagation();
+            const dates = [];
+            for (let d=it.a; d<=it.b; d++){
+              const ds = ymd(year, month, d);
+              dates.push(ds);
+            }
+            const rangeLogs = logs
+              .filter(l=>isIncludedStatus(l.status))
+              .filter(l=>l.projectId===it.pid)
+              .filter(l=>dates.includes(l.date));
+            if (!rangeLogs.length) return;
+            modalOpen(
+              `프로젝트 상세 (${projName(it.pid)})`,
+              el("div", {},
+                el("div", { class:"muted2", style:"padding:0 0 10px 0;" }, `${ymd(year,month,it.a)} ~ ${ymd(year,month,it.b)} (총 ${rangeLogs.length}건)`),
+                el("div", { class:"calModalList2" },
+                  ...rangeLogs.map(l=>el("div", { class:"calModalItem2" },
+                    el("div", { class:"calModalLine1_2" },
+                      el("div", { class:`calPill2 ${l.status==="approved"?"ok":"wait"}` }, l.status==="approved"?"승인":"제출"),
+                      el("div", { class:"calModalMeta2" }, `${l.date} · ${l.category||"-"} / ${l.process||"-"} · ${Number(l.hours||0)}시간`)
+                    ),
+                    el("div", { class:"calModalContent2" }, (l.content||"").trim() || "(내용 없음)")
+                  ))
+                )
+              )
+            );
+          }
+        }, el("span", { class:"t" }, projName(it.pid))
+      );
+      mark(occ, it.colStart, it.colEnd);
+
+      lanes.push({ node: laneNode, occ });
+    }
+  }
+
+  // weekBlock 안에 레인들을 위에서부터 쌓기
+  // (레이아웃 맞추기 위해 weekBlock에 7칸짜리 dummy 행을 하나 둔 뒤, 그 위에 lane들을 stack)
+  const stack = el("div", { style:"grid-column:1 / -1; display:flex; flex-direction:column; gap:6px; padding:10px 10px 0;" },
+    ...lanes.map(x=>x.node)
+  );
+
+  // weekBlock은 7열 grid인데, stack을 전체폭으로
+  weekBlock.appendChild(stack);
+
+  // ✅ weekBlock의 높이를 셀 min-height에 맞춰 확보(레이인이 많으면 자동 증가)
+  // 기본: 셀 120px + padding
+  weekBlock.style.minHeight = "120px";
+
+  overlay.appendChild(weekBlock);
+}
+
+
 
     // 안내 문구
     calCard.appendChild(
