@@ -959,7 +959,8 @@ if (!showCatTabs) ui.cat = "basic"; // 받은/보낸이 아니면 항상 basic
         </div>
 
         <div class="mailGTopMid">
-          <div class="mailGTabs" id="mailGTabs"></div>
+          <div class="mailGTabs" id="mailGTabs" style="${showCatTabs ? "" : "display:none;"}"></div>
+
         </div>
 
         <div class="mailGTopRight">
@@ -1115,25 +1116,42 @@ if (showCatTabs){
   // 필터: (1) 검색 (2) 중요편지함이면 star true만
   // 카테고리 탭은 지금은 UI만(필요 시 나중에 subject prefix 등으로 분류 로직 추가)
   function applyFilter(){
-    const q = (qEl ? qEl.value : "").trim().toLowerCase();
+  const q = (qEl ? qEl.value : "").trim().toLowerCase();
 
-    let items = all.slice();
+  let items = all.slice();
 
-    // 중요편지함이면 star만
-    if (box === "starred"){
-      items = items.filter(m => !!ui.star[m.mailId]);
-    }
-
-    if (q){
-      items = items.filter(m=>{
-        const s = `${m.from||""} ${m.subject||""} ${m.at||""}`.toLowerCase();
-        return s.includes(q);
+  // ✅ 카테고리 탭 필터(받은/보낸에서만)
+  if (showCatTabs){
+    const subOf = (m)=> String(m.subject || "");
+    if (ui.cat === "checklist"){
+      items = items.filter(m => subOf(m).includes("[체크리스트 자료]"));
+    } else if (ui.cat === "deliver"){
+      items = items.filter(m => subOf(m).includes("_납품") || subOf(m).includes("납품"));
+    } else {
+      // basic: 체크리스트/납품 제외(원하면 이 basic 분기 자체를 지우면 “모두표시”가 됨)
+      items = items.filter(m => {
+        const s = subOf(m);
+        return !(s.includes("[체크리스트 자료]") || s.includes("_납품") || s.includes("납품"));
       });
     }
-
-    filteredCache = items;
-    renderRows(items);
   }
+
+  // 중요편지함이면 star만
+  if (box === "starred"){
+    items = items.filter(m => !!ui.star[m.mailId]);
+  }
+
+  if (q){
+    items = items.filter(m=>{
+      const s = `${m.from||""} ${m.subject||""} ${m.at||""}`.toLowerCase();
+      return s.includes(q);
+    });
+  }
+
+  filteredCache = items;
+  renderRows(items);
+}
+
 
   if (qEl){
     qEl.addEventListener("keydown", (e)=>{
