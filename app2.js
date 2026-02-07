@@ -221,7 +221,8 @@ const MENU = [
       { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
       { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"struct-estimate-write", label:"견적조건 작성", type:"board" },
-      { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" }
+      { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" },
+      { key:"struct-fin", label:"철골ㆍ철콘산출(FIN)", type:"link", url:"https://eumditravel-oss.github.io/FIN2/" }
     ]
   },
   {
@@ -340,13 +341,20 @@ function renderSide2(db){
     const list = el("div", { class:`sideGroupList2 ${opened ? "" : "hidden"}` });
 
     visibleItems.forEach(it=>{
-      list.appendChild(
-        el("button", {
-          class:`navItem2 ${cur===it.key ? "active" : ""}`,
-          onclick:()=> setHash(it.key)
-        }, it.label)
-      );
-    });
+  list.appendChild(
+    el("button", {
+      class:`navItem2 ${cur===it.key ? "active" : ""}`,
+      onclick:()=>{
+        if (it.type === "link" && it.url){
+          window.open(it.url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        setHash(it.key);
+      }
+    }, it.label)
+  );
+});
+
 
     host.appendChild(head);
     host.appendChild(list);
