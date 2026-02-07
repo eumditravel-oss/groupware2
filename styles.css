@@ -425,38 +425,41 @@ header.topbar .topRight{
   background: var(--accent);
 }
 /* =========================
-   Side Menu Active Accent (강화판)
-   ========================= */
+   Side Menu Active Accent (슬림 + 텍스트 들여쓰기)
+========================= */
 
-/* active 배경도 조금 더 확실하게 */
+/* active 배경 */
 #sideMenu .side-item.active{
   background: rgba(255,255,255,.96) !important;
-  border-color: rgba(240,138,36,.28) !important;
+  border-color: rgba(240,138,36,.22) !important;
   box-shadow: 0 12px 22px rgba(0,0,0,.07) !important;
+
+  /* ✅ 글씨를 살짝 안으로 */
+  padding-left: 22px !important;  /* 기존 14px보다 안쪽 */
 }
 
-/* 주황 띠: 더 진하게/선명하게 + 항상 표시 */
+/* ✅ 주황 띠: 얇게 + 더 왼쪽(텍스트 영역 침범 방지) */
 #sideMenu .side-item.active::before{
   content:"" !important;
   position:absolute !important;
-  left: 10px !important;
+  left: 8px !important;            /* 기존 10px -> 더 바깥 */
   top: 50% !important;
   transform: translateY(-50%) !important;
 
-  width: 7px !important;     /* 더 두껍게 */
-  height: 30px !important;   /* 더 길게 */
+  width: 4px !important;           /* ✅ 7px -> 4px */
+  height: 20px !important;         /* ✅ 30px -> 20px */
   border-radius: 999px !important;
 
   background: var(--accent) !important;
-  box-shadow: 0 14px 26px rgba(240,138,36,.45) !important;
+  box-shadow: 0 10px 18px rgba(240,138,36,.22) !important; /* 과한 광택 줄임 */
 }
 
-/* hover 힌트는 유지하되, active를 절대 덮지 않게 */
-#sideMenu .side-item:not(.active):hover::before{
-  width: 7px;
-  height: 24px;
-  background: rgba(240,138,36,.35);
+/* hover는 active를 절대 덮지 않게 */
+#sideMenu .side-item:not(.active):hover{
+  background: rgba(255,255,255,.70);
+  border-color: rgba(0,0,0,.06);
 }
+
 
 
 
