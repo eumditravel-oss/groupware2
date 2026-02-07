@@ -597,7 +597,7 @@ function computeProjectTotalHours(db, projectId){
     );
   }
 
-  /* ✅ REPLACE: viewProjectEditor(db) - FULL */
+  /* ✅ REPLACE: viewProjectEditor(db) - FULL (좌측 리스트 / 우측 상세) */
 function viewProjectEditor(db){
   const view = $("#view2");
   view.innerHTML = "";
@@ -612,10 +612,7 @@ function viewProjectEditor(db){
     return db.projects.find(p => p.projectId === id) || null;
   }
 
-  // ✅ 레이아웃: 상단(상세) + 하단(리스트)
-  const detailCard = el("div", { class:"card2", style:"padding:12px 14px;" });
-  const listCard   = el("div", { class:"card2", style:"padding:12px 14px;margin-top:12px;" });
-
+  // ✅ 상단 바(설명 + 추가)
   const addBtn = el("button", {
     class:"btn2 primary2",
     onclick:()=>{
@@ -637,7 +634,7 @@ function viewProjectEditor(db){
       });
       saveDB(db);
       selectedId = id;
-      render(); // 화면 갱신
+      render();
     }
   }, "+ 새 프로젝트");
 
@@ -651,19 +648,23 @@ function viewProjectEditor(db){
     addBtn
   );
 
+  // ✅ 본문 레이아웃: 좌측 리스트 / 우측 상세 (소요시간 화면과 동일한 배치)
+  const left  = el("div", { class:"wtLeft2" });
+  const right = el("div", { class:"wtRight2" });
+  const grid  = el("div", { class:"wtGrid2" }, left, right);
+
   view.appendChild(topBar);
-  view.appendChild(detailCard);
-  view.appendChild(listCard);
+  view.appendChild(grid);
 
   function rerender(){
-    // ----- LIST (하단)
-    listCard.innerHTML = "";
-    listCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+    // ----- LEFT (리스트)
+    left.innerHTML = "";
+    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
 
     if (!db.projects.length){
-      listCard.appendChild(el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n상단 ‘+ 새 프로젝트’로 추가하세요."));
-      detailCard.innerHTML = "";
-      detailCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 생성하면 편집 화면이 표시됩니다."));
+      left.appendChild(el("div", { class:"wtEmpty2" }, "등록된 프로젝트가 없습니다.\n상단 ‘+ 새 프로젝트’로 추가하세요."));
+      right.innerHTML = "";
+      right.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 생성하면 편집 화면이 표시됩니다."));
       return;
     }
 
@@ -682,12 +683,12 @@ function viewProjectEditor(db){
         )
       );
     });
-    listCard.appendChild(listHost);
+    left.appendChild(listHost);
 
-    // ----- DETAIL (상단)
+    // ----- RIGHT (상세 입력)
     const p = projByIdLocal(selectedId);
-    detailCard.innerHTML = "";
-    detailCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
+    right.innerHTML = "";
+    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세 입력"));
 
     const codeInput = el("input", { class:"btn2", type:"text", value: p.projectCode || p.projectId || "", placeholder:"프로젝트 코드" });
     const nameInput = el("input", { class:"btn2", type:"text", value: p.projectName || "", placeholder:"프로젝트 명칭" });
@@ -737,7 +738,7 @@ function viewProjectEditor(db){
       }
     }, "삭제");
 
-    detailCard.appendChild(
+    right.appendChild(
       el("div", { class:"stack" },
         el("div", { class:"card2", style:"padding:12px 14px;" },
           el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
@@ -760,6 +761,7 @@ function viewProjectEditor(db){
 
   rerender();
 }
+
 
 
 
