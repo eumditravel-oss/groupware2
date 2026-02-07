@@ -1118,3 +1118,16 @@ button.calCell2{
 /* 기존 ribbon은 흐리게 유지(원하면 0으로) */
 .calRibbons2{ opacity:.15; }
 
+
+/* ✅ 모달이 항상 최상단 */
+#modal2 { 
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+/* ✅ 모달 열렸을 때 달력 오버레이 숨김(겹침 방지) */
+body.modalOpen2 .calOverlay2{
+  display: none !important;
+}
+
