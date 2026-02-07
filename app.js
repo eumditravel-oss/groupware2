@@ -212,7 +212,7 @@
       meta: {
         version:"0.5",
         createdAt: nowISO(),
-        seedMailsVersion: "2026-02-02",
+        seedMailsVersion: "2026-02-03",
         seedBoardVersion: "2026-01-31",
         seedProjectsVersion: "2026-01-31",
       },
@@ -232,8 +232,7 @@
       ],
 
       // 전자메일(더미)
-      // 전자메일(더미)
-mails: [
+      mails: [
   // 기본(기존)
   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 문의사항 답변", from:"ㅇㅇ건설", at:"2026-01-26 09:12" },
   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 물량산출 체크리스트 송부", from:"ㅇㅇ건설", at:"2026-01-24 10:03" },
@@ -243,24 +242,22 @@ mails: [
    { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 내역 반영 요청", from:"ㅇㅇ건설", at:"2026-01-20 10:03" },
    { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 수정요청", from:"ㅇㅇ건설", at:"2026-01-19 10:03" },
   
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설", at:"2026-01-23 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 2차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설",  at:"2026-01-22 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 3차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설",  at:"2026-01-21 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 작업 데이터 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-20 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 산출서 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-19 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 작업도면 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-18 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 도면 수정에 의한 자료 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-17 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 물량 비교표 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-16 16:22" },
+   { mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 작업 데이터 송부", from:"(보낸메일)", at:"2026-01-20 16:22" },
+{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 산출서 송부",           from:"(보낸메일)", at:"2026-01-19 16:22" },
+{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 작업도면 송부",         from:"(보낸메일)", at:"2026-01-18 16:22" },
+{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 도면 수정에 의한 자료 송부", from:"(보낸메일)", at:"2026-01-17 16:22" },
+{ mailId: uuid(), box:"sent", subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 물량 비교표 송부", from:"(보낸메일)", at:"2026-01-16 16:22" },
+
 
   // ✅ 체크리스트(예시)
-  { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부', from:"PMO", at:"2026-02-02 09:40" },
-  { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(보완 요청)', from:"ㅇㅇ건설", at:"2026-02-03 14:18" },
+  { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부', from:"(보낸메일)", at:"2026-02-02 09:40" },
+  { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(보완 요청)', from:"(보낸메일)", at:"2026-02-03 14:18" },
   { mailId: uuid(), box:"sent",  subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부(회신)', from:"(보낸메일)", at:"2026-02-03 16:02" },
 
   // ✅ 납품메일(예시)
   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 10:05" },
   { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 확인요청", from:"ㅇㅇ건설(주)", at:"2026-02-04 15:22" },
-  { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"(보낸메일)", at:"2026-02-04 09:55" },
+  { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 09:55" },
 ],
 
 
@@ -941,12 +938,16 @@ db.mails = db.mails.map(m => ({
   function saveUI(){ localStorage.setItem(mailUIKey, JSON.stringify(ui)); }
 
   // 상단 카테고리 탭: 기본/체크리스트/납품메일 (UI만)
-  const catTabs = [
-    { key:"basic", label:"기본" },
-    { key:"checklist", label:"체크리스트" },
-    { key:"deliver", label:"납품메일" },
-  ];
-  ui.cat = ui.cat || "basic";
+  const showCatTabs = (box === "inbox" || box === "sent");
+
+const catTabs = showCatTabs ? [
+  { key:"basic",     label:"기본" },
+  { key:"checklist", label:"체크리스트" },
+  { key:"deliver",   label:"납품메일" },
+] : [];
+
+ui.cat = ui.cat || "basic";
+if (!showCatTabs) ui.cat = "basic"; // 받은/보낸이 아니면 항상 basic
 
   // --- 레이아웃 ---
   const layout = dom(`
@@ -993,6 +994,7 @@ db.mails = db.mails.map(m => ({
   // 탭 렌더
   function renderTabs(){
     if (!tabsHost) return;
+     if (!showCatTabs){ tabsHost.innerHTML = ""; return; }
     tabsHost.innerHTML = "";
     catTabs.forEach(t=>{
       const b = document.createElement("button");
@@ -1091,6 +1093,24 @@ db.mails = db.mails.map(m => ({
   }
 
   let filteredCache = [];
+
+     // ✅ 카테고리 탭 필터(받은/보낸에서만)
+if (showCatTabs){
+  const subOf = (m)=> String(m.subject || "");
+  if (ui.cat === "checklist"){
+    items = items.filter(m => subOf(m).includes("[체크리스트 자료]"));
+  } else if (ui.cat === "deliver"){
+    // 납품메일 기준: subject에 "_납품" 포함 (원하는 규칙으로 조정 가능)
+    items = items.filter(m => subOf(m).includes("_납품") || subOf(m).includes("납품"));
+  } else {
+    // basic: 위 두 분류에 해당하는 건 제외하고 싶으면 아래처럼
+    items = items.filter(m => {
+      const s = subOf(m);
+      return !(s.includes("[체크리스트 자료]") || s.includes("_납품") || s.includes("납품"));
+    });
+  }
+}
+
 
   // 필터: (1) 검색 (2) 중요편지함이면 star true만
   // 카테고리 탭은 지금은 UI만(필요 시 나중에 subject prefix 등으로 분류 로직 추가)
