@@ -1039,3 +1039,82 @@ button.calCell2{
 
 /* 달력 셀 안의 기존 ribbon은 “요약”으로만 남기거나 숨길 수 있음 */
 .calRibbons2{ opacity:.15; } /* 필요 없으면 0으로 */
+
+/* =========================
+   Calendar Overlay Alignment FIX
+========================= */
+
+/* 전체 캘린더 래퍼 */
+.calWrap2{ position:relative; }
+
+/* ✅ 오버레이를 '달력 셀 영역'에만 고정시키는 래퍼 */
+.calGridWrap2{
+  position: relative;
+}
+
+/* ✅ 오버레이는 셀 그리드와 동일한 박스에만 덮기 */
+.calOverlay2{
+  position:absolute;
+  inset: 0;
+  pointer-events:none; /* 기본은 셀 클릭 방해 X */
+  z-index: 2;
+}
+
+/* ✅ 셀 그리드와 동일한 7열 + 동일한 행 높이(week row) */
+.calOverlayGrid2{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+
+  /* 핵심: calCell2 min-height(120px)와 동일한 row 체계 */
+  grid-auto-rows: minmax(120px, auto);
+}
+
+/* week overlay 한 덩어리는 '한 행(week row)'을 차지 */
+.calWeekOverlay2{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+
+  /* 셀 1칸 높이와 맞추기 */
+  min-height: 120px;
+  align-items: start;
+
+  /* 셀 padding-top(10px) 느낌으로 bar를 살짝 아래로 */
+  padding-top: 6px;
+}
+
+/* 레인(한 줄) */
+.calLane2{
+  display:grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* span bar는 클릭 가능하게 하려면 auto로 */
+.calSpan2{
+  pointer-events:auto;
+  height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 10px 20px rgba(0,0,0,.06);
+
+  background: var(--spanBg);
+  color: var(--spanInk);
+
+  font-size: 12px;
+  font-weight: 1100;
+
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+/* 기존 ribbon은 흐리게 유지(원하면 0으로) */
+.calRibbons2{ opacity:.15; }
+
