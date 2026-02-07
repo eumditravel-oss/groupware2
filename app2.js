@@ -176,13 +176,22 @@
   }
 
   function modalOpen(title, bodyNode){
-    $("#modal2Title").textContent = title || "";
-    const body = $("#modal2Body");
-    body.innerHTML = "";
-    if (bodyNode) body.appendChild(bodyNode);
-    $("#modal2").classList.remove("hidden");
-  }
-  function modalClose(){ $("#modal2").classList.add("hidden"); }
+  $("#modal2Title").textContent = title || "";
+  const body = $("#modal2Body");
+  body.innerHTML = "";
+  if (bodyNode) body.appendChild(bodyNode);
+
+  // ✅ 모달 열릴 때: 달력 오버레이 숨김(겹침 방지)
+  document.body.classList.add("modalOpen2");
+
+  $("#modal2").classList.remove("hidden");
+}
+function modalClose(){
+  $("#modal2").classList.add("hidden");
+
+  // ✅ 모달 닫힐 때: 오버레이 복원
+  document.body.classList.remove("modalOpen2");
+}
 
   /***********************
  * Menu Model (홈화면=대시보드)
@@ -1730,12 +1739,16 @@ const weeks = [];
   }
 }
 
-// 오버레이 컨테이너 (grid 위에 정확히 겹치기)
 const overlay = el("div", { class:"calOverlay2" });
+
+// ✅ 오버레이는 달력 위에는 올라오되, 모달보다 무조건 아래
+overlay.style.zIndex = "5"; // (모달은 CSS에서 9999로 올릴 예정)
+
 wrap.appendChild(overlay);
 
 // ✅ 요일헤더 높이/마진/그리드 위치를 실제 DOM 기준으로 계산해서 정확히 맞춤
 syncOverlayToGrid(wrap, dowRow, grid, overlay);
+
 
     // ✅ 리사이즈/레이아웃 변경 시 overlay 위치/너비를 grid에 다시 맞춤
 attachOverlayResizeObserver(wrap, dowRow, grid, overlay, () => {
