@@ -1632,9 +1632,7 @@ calCard.appendChild(wrap);
       grid.appendChild(el("div", { class:"calCell2 muted" }));
     }
 
-    calCard.appendChild(dowRow);
-    calCard.appendChild(grid);
-    wrap.appendChild(dowRow);
+        wrap.appendChild(dowRow);
 wrap.appendChild(grid);
 
 
@@ -1845,7 +1843,7 @@ for (let w=0; w<weeks.length; w++){
                 )
               );
             }
-          }, el("span", { class:"t" }, projName(it.pid))
+          }, el("span", { class:"t" }, projName(it.pid)))
         );
         mark(lane.occ, it.colStart, it.colEnd);
         placed = true;
@@ -1890,7 +1888,7 @@ for (let w=0; w<weeks.length; w++){
               )
             );
           }
-        }, el("span", { class:"t" }, projName(it.pid))
+        }, el("span", { class:"t" }, projName(it.pid)))
       );
       mark(occ, it.colStart, it.colEnd);
 
