@@ -392,3 +392,22 @@ body{
   .tbl2 tbody td{ border-bottom:1px solid rgba(0,0,0,.06); display:flex; justify-content:space-between; gap:12px; }
   .rowActions{ justify-content:flex-start; }
 }
+
+/* styles2.css (PATCH: 로고 이미지 스타일) */
+
+/* 기존 styles2.css 맨 아래나 .layout2 아래 아무 곳에 추가 */
+.logo2{
+  display:flex;
+  align-items:center;
+  padding: 6px 6px 0;
+  margin-bottom: 10px;
+}
+.logoImg2{
+  width: 156px;          /* 필요 시 조절 */
+  max-width: 100%;
+  height: auto;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.10));
+}
+
