@@ -732,7 +732,11 @@
   }
 
   function boot(){
-    $("#btnClose")?.addEventListener("click", ()=> window.close());
+   $("#btnClose")?.addEventListener("click", ()=>{
+  if (window.opener) window.close();
+  else location.href = "./index.html"; // 또는 원하는 복귀 페이지
+});
+
     $("#modal2Close")?.addEventListener("click", modalClose);
     $("#modal2")?.addEventListener("click", (e)=>{ if (e.target === $("#modal2")) modalClose(); });
 
