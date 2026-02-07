@@ -253,15 +253,16 @@
         { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설(주)", at:"2026-02-04 09:55" },
       ],
 
-      // 게시판(더미)
+            // 게시판(더미)
       boardPosts: [
-        { postId: uuid(), boardKey:"ceo",     title:"2월 운영 메시지", writer:"대표", at:"2026-02-02" },
-        { postId: uuid(), boardKey:"weekly",  title:"주간 프로젝트 진행사항(2월 1주차)", writer:"PMO", at:"2026-02-03" },
-        { postId: uuid(), boardKey:"gallery", title:"25년 송년의밤 회식", writer:"관리팀", at:"2026-02-01" },
-        { postId: uuid(), boardKey:"notice",  title:"2025년 연말정산 안내", writer:"총무팀", at:"2026-01-26" },
-        { postId: uuid(), boardKey:"hr",      title:"인사발령(260126)", writer:"인사팀", at:"2026-01-26" },
-        { postId: uuid(), boardKey:"minutes", title:"주간 회의록(1월 3주차)", writer:"PMO", at:"2026-01-21" }
+        { postId: uuid(), boardKey:"ceo",     title:"2월 운영 메시지", writer:"대표", at:"2026-02-02", views: 31,  isNotice:true },
+        { postId: uuid(), boardKey:"weekly",  title:"주간 프로젝트 진행사항(2월 1주차)", writer:"PMO", at:"2026-02-03", views: 237, isNotice:true },
+        { postId: uuid(), boardKey:"gallery", title:"25년 송년의밤 회식", writer:"관리팀", at:"2026-02-01", views: 355, isNotice:false },
+        { postId: uuid(), boardKey:"notice",  title:"2025년 연말정산 안내", writer:"총무팀", at:"2026-01-26", views: 137, isNotice:true },
+        { postId: uuid(), boardKey:"hr",      title:"인사발령(260126)", writer:"인사팀", at:"2026-01-26", views: 194, isNotice:true },
+        { postId: uuid(), boardKey:"minutes", title:"주간 회의록(1월 3주차)", writer:"PMO", at:"2026-01-21", views: 298, isNotice:false }
       ],
+
 
       // 전자결재(더미)
       approvals: [
@@ -344,13 +345,16 @@
       at: String(m?.at || "")
     }));
 
-    db.boardPosts = db.boardPosts.map(p => ({
+        db.boardPosts = db.boardPosts.map(p => ({
       postId: String(p?.postId || uuid()),
       boardKey: String(p?.boardKey || "notice"),
       title: String(p?.title || ""),
       writer: String(p?.writer || ""),
-      at: String(p?.at || "")
+      at: String(p?.at || ""),
+      views: Number.isFinite(Number(p?.views)) ? Number(p.views) : 0,
+      isNotice: !!p?.isNotice
     }));
+
 
     db.approvals = db.approvals.map(a => ({
       docId: String(a?.docId || uuid()),
@@ -1096,7 +1100,7 @@
     applyFilter();
   }
 
-  function viewBoard(db, sub){
+    function viewBoard(db, sub){
     if (!els.view) return;
     els.view.innerHTML = "";
 
@@ -1113,43 +1117,215 @@
       gallery:"사진첩",
       free:"자유게시판"
     };
+
     const title = `게시판 · ${labelMap[boardKey] || boardKey}`;
     setRouteTitle(title);
 
-    const items = (db.boardPosts || [])
+    const all = (db.boardPosts || [])
       .filter(p => String(p.boardKey||"") === boardKey)
       .slice()
       .sort((a,b)=>String(b.at||"").localeCompare(String(a.at||"")));
 
-    const card = dom(`
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title">${escapeHtml(title)}</div>
-          <div class="badge">${items.length}건</div>
+    // UI state (검색/페이징 유지)
+    const uiKey = `CONCOST_BOARD_UI_V1_${boardKey}`;
+    const ui = safeParse(localStorage.getItem(uiKey) || "{}", {});
+    ui.field = ui.field || "title"; // title | writer
+    ui.q = typeof ui.q === "string" ? ui.q : "";
+    ui.page = Number.isFinite(Number(ui.page)) ? Number(ui.page) : 1;
+    const PAGE_SIZE = 10;
+
+    function saveUI(){ localStorage.setItem(uiKey, JSON.stringify(ui)); }
+
+    // layout
+    const wrap = dom(`
+      <div class="boardWrap">
+        <div class="boardHead card">
+          <div class="boardHeadTitle">${escapeHtml(title)}</div>
+          <div class="boardSearchRow">
+            <select class="boardSel" id="boardField">
+              <option value="title">제목</option>
+              <option value="writer">작성자</option>
+            </select>
+            <input class="boardQ" id="boardQ" placeholder="검색어를 입력해주세요." />
+            <button class="btn boardBtn" id="boardSearchBtn" type="button">검색</button>
+          </div>
         </div>
-        <div class="list"></div>
+
+        <div class="boardCard card">
+          <div class="boardTopLine">
+            <div class="boardCount" id="boardCount"></div>
+          </div>
+
+          <div class="boardList" id="boardList"></div>
+
+          <div class="boardPager" id="boardPager"></div>
+        </div>
       </div>
     `);
 
-    const list = $(".list", card);
-    if (list){
-      if (!items.length){
-        list.appendChild(dom(`<div class="empty">표시할 게시물이 없습니다</div>`));
-      } else {
-        items.forEach(p=>{
-          list.appendChild(dom(`
-            <div class="list-item">
-              <div class="list-title">${escapeHtml(p.title || "")}</div>
-              <div class="list-sub">${escapeHtml(`${p.writer || "-"} · ${p.at || "-"}`)}</div>
-            </div>
-          `));
-        });
+    els.view.appendChild(wrap);
+
+    const fieldEl = byId("boardField");
+    const qEl = byId("boardQ");
+    const btnEl = byId("boardSearchBtn");
+    const listEl = byId("boardList");
+    const cntEl = byId("boardCount");
+    const pagerEl = byId("boardPager");
+
+    if (fieldEl) fieldEl.value = ui.field;
+    if (qEl) qEl.value = ui.q;
+
+    function badgeHTML(p){
+      return p?.isNotice ? `<span class="bBadge">공지</span>` : `<span class="bNo">${escapeHtml(String(p.no||""))}</span>`;
+    }
+
+    function computeNo(items){
+      // 최신순 정렬 기준으로 표시번호 부여(공지 아닌 글만)
+      let n = items.length;
+      return items.map(it=>{
+        const x = { ...it };
+        if (!x.isNotice){
+          x.no = String(n);
+          n -= 1;
+        } else {
+          x.no = "";
+        }
+        return x;
+      });
+    }
+
+    function filtered(){
+      const q = String(ui.q || "").trim().toLowerCase();
+      let items = all.slice();
+
+      // 공지 우선(상단 고정 느낌)
+      items.sort((a,b)=>{
+        const an = a?.isNotice ? 1 : 0;
+        const bn = b?.isNotice ? 1 : 0;
+        if (an !== bn) return bn - an;
+        return String(b.at||"").localeCompare(String(a.at||""));
+      });
+
+      if (q){
+        if (ui.field === "writer"){
+          items = items.filter(p => String(p.writer||"").toLowerCase().includes(q));
+        } else {
+          items = items.filter(p => String(p.title||"").toLowerCase().includes(q));
+        }
+      }
+
+      return computeNo(items);
+    }
+
+    function render(){
+      const items = filtered();
+      const total = items.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      ui.page = Math.min(Math.max(1, ui.page), totalPages);
+      saveUI();
+
+      if (cntEl) cntEl.textContent = `전체 ${total}건`;
+
+      const start = (ui.page - 1) * PAGE_SIZE;
+      const pageItems = items.slice(start, start + PAGE_SIZE);
+
+      if (listEl){
+        listEl.innerHTML = "";
+
+        // header row
+        listEl.appendChild(dom(`
+          <div class="bRow bHead">
+            <div class="bCell bNoCol">번호</div>
+            <div class="bCell bTitleCol">제목</div>
+            <div class="bCell bAtCol">작성일</div>
+            <div class="bCell bViewCol">조회</div>
+          </div>
+        `));
+
+        if (!pageItems.length){
+          listEl.appendChild(dom(`<div class="bEmpty">표시할 게시물이 없습니다</div>`));
+        } else {
+          pageItems.forEach(p=>{
+            const row = dom(`
+              <div class="bRow">
+                <div class="bCell bNoCol">${badgeHTML(p)}</div>
+                <div class="bCell bTitleCol">
+                  <div class="bTitle">${escapeHtml(p.title || "")}</div>
+                  <div class="bSub">${escapeHtml(p.writer || "-")}</div>
+                </div>
+                <div class="bCell bAtCol">${escapeHtml(p.at || "-")}</div>
+                <div class="bCell bViewCol">${escapeHtml(String(Number(p.views||0)))}</div>
+              </div>
+            `);
+
+            // (추후 상세보기 연결 대비) 지금은 토스트만
+            row.addEventListener("click", ()=>{
+              toast("상세보기는 추후 연결 예정입니다.");
+            });
+
+            listEl.appendChild(row);
+          });
+        }
+      }
+
+      // pager
+      if (pagerEl){
+        pagerEl.innerHTML = "";
+
+        const mkBtn = (label, page, disabled=false, active=false) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "bPageBtn" + (active ? " active" : "");
+          b.textContent = label;
+          b.disabled = !!disabled;
+          b.addEventListener("click", ()=>{
+            ui.page = page;
+            saveUI();
+            render();
+          });
+          return b;
+        };
+
+        pagerEl.appendChild(mkBtn("«", 1, ui.page === 1));
+        pagerEl.appendChild(mkBtn("‹", Math.max(1, ui.page - 1), ui.page === 1));
+
+        // 가운데 페이지 번호(최대 7개)
+        const span = 3;
+        let s = Math.max(1, ui.page - span);
+        let e = Math.min(totalPages, ui.page + span);
+        if (e - s < span * 2){
+          s = Math.max(1, e - span * 2);
+          e = Math.min(totalPages, s + span * 2);
+        }
+        for (let i=s;i<=e;i++){
+          pagerEl.appendChild(mkBtn(String(i), i, false, i === ui.page));
+        }
+
+        pagerEl.appendChild(mkBtn("›", Math.min(totalPages, ui.page + 1), ui.page === totalPages));
+        pagerEl.appendChild(mkBtn("»", totalPages, ui.page === totalPages));
       }
     }
 
-    els.view.appendChild(dom(`<div class="stack"></div>`));
-    $(".stack", els.view).appendChild(card);
+    function doSearch(){
+      ui.field = fieldEl ? fieldEl.value : "title";
+      ui.q = qEl ? qEl.value : "";
+      ui.page = 1;
+      saveUI();
+      render();
+    }
+
+    if (btnEl) btnEl.addEventListener("click", doSearch);
+    if (qEl){
+      qEl.addEventListener("keydown", (e)=>{ if (e.key === "Enter") doSearch(); });
+      qEl.addEventListener("input", ()=>{ ui.q = qEl.value; saveUI(); render(); });
+    }
+    if (fieldEl){
+      fieldEl.addEventListener("change", ()=>{ ui.field = fieldEl.value; saveUI(); render(); });
+    }
+
+    render();
   }
+
 
   function viewEA(db, sub){
     if (!els.view) return;
