@@ -1012,7 +1012,7 @@ function viewProjectEditor(db){
     }
   }
 
-  /* ✅ REPLACE: viewDashboard(db) - FULL */
+  /* ✅ REPLACE: viewDashboard(db) - FULL (좌측=프로젝트 리스트 / 우측=프로젝트 상세) */
 function viewDashboard(db){
   const view = $("#view2");
   view.innerHTML = "";
@@ -1095,14 +1095,14 @@ function viewDashboard(db){
   );
 
   // -----------------------
-  // Layout: 상단(상세) + 하단(리스트)
+  // Layout: 좌(리스트) / 우(상세)
   // -----------------------
-  const detailCard = el("div", { class:"card2", style:"padding:12px 14px;" });
-  const listCard   = el("div", { class:"card2", style:"padding:12px 14px;margin-top:12px;" });
+  const left  = el("div", { class:"wtLeft2" });
+  const right = el("div", { class:"wtRight2" });
+  const grid  = el("div", { class:"wtGrid2" }, left, right);
 
   view.appendChild(topBar);
-  view.appendChild(detailCard);
-  view.appendChild(listCard);
+  view.appendChild(grid);
 
   // -----------------------
   // Render
@@ -1110,21 +1110,22 @@ function viewDashboard(db){
   function rerender(){
     const list = projects.filter(p => projectMatchesQuery(p));
 
+    // 비어있을 때
     if (!list.length){
-      listCard.innerHTML = "";
-      detailCard.innerHTML = "";
-      listCard.appendChild(el("div", { class:"wtEmpty2" }, "조건에 맞는 프로젝트가 없습니다."));
-      detailCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하면 상세가 표시됩니다."));
+      left.innerHTML = "";
+      right.innerHTML = "";
+      left.appendChild(el("div", { class:"card2", style:"padding:14px;" }, "조건에 맞는 프로젝트가 없습니다."));
+      right.appendChild(el("div", { class:"card2", style:"padding:14px;" }, "프로젝트를 선택하면 상세가 표시됩니다."));
       return;
     }
 
-    // selected
+    // 선택 프로젝트 결정/저장
     selectedId = pickDefaultProjectId(list);
     localStorage.setItem(LS_SEL, selectedId);
 
-    // ----- LIST (하단)
-    listCard.innerHTML = "";
-    listCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
+    // ----- LEFT: 프로젝트 리스트
+    left.innerHTML = "";
+    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
 
     const listHost = el("div", { class:"wtList2" });
     list.forEach(p=>{
@@ -1147,12 +1148,12 @@ function viewDashboard(db){
         )
       );
     });
-    listCard.appendChild(listHost);
+    left.appendChild(listHost);
 
-    // ----- DETAIL (상단)
+    // ----- RIGHT: 프로젝트 상세
     const sp = projById(db, selectedId);
-    detailCard.innerHTML = "";
-    detailCard.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세"));
+    right.innerHTML = "";
+    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세"));
 
     const use = sp?.buildingUse || sp?.use || sp?.purpose || "-";
     const area = sp?.grossArea || sp?.area || sp?.gfa || "-";
@@ -1181,7 +1182,7 @@ function viewDashboard(db){
     const partStats = parts.map(part => computePartStats(selectedId, part));
     const totalDaysCalendar = computeTotalDays(selectedId);
 
-    const table = el("div", { class:"wtDetailBody2" },
+    const body = el("div", { class:"wtDetailBody2" },
       el("div", { class:"wtTotal2" },
         el("div", { class:"wtTotalLabel2" }, "프로젝트 총 소요일수(캘린더 기준)"),
         el("div", { class:"wtTotalVal2" }, `${totalDaysCalendar}일`)
@@ -1208,12 +1209,13 @@ function viewDashboard(db){
       )
     );
 
-    detailCard.appendChild(header);
-    detailCard.appendChild(table);
+    right.appendChild(header);
+    right.appendChild(body);
   }
 
   rerender();
 }
+
 
 
 
