@@ -427,39 +427,45 @@
     { key:"업무관리", label:"업무관리" },
   ];
 
-  const SIDE_MENUS = {
-    "전자메일": [
-      { key:"mail-inbox",     label:"받은편지함",     route:"#전자메일/mail-inbox" },
-      { key:"mail-sent",      label:"보낸편지함",     route:"#전자메일/mail-sent" },
-      { key:"mail-draft",     label:"임시보관함",     route:"#전자메일/mail-draft" },
-      { key:"mail-scheduled", label:"예약메세지보기", route:"#전자메일/mail-scheduled" },
-      { key:"mail-starred",   label:"중요편지함",     route:"#전자메일/mail-starred" },
-    ],
-    "게시판": [
-      { key:"ceo",     label:"CEO Message", route:"#게시판/ceo" },
-      { key:"notice",  label:"전사공지",     route:"#게시판/notice" },
-      { key:"hr",      label:"인사발령",     route:"#게시판/hr" },
-      { key:"bid",     label:"경조사",       route:"#게시판/bid" },
-      { key:"orders",  label:"수주소식",     route:"#게시판/orders" },
-      { key:"minutes", label:"회의록",       route:"#게시판/minutes" },
-      { key:"weekly",  label:"주간 프로젝트 진행사항", route:"#게시판/weekly" },
-      { key:"manual",  label:"매뉴얼",       route:"#게시판/manual" },
-      { key:"gallery", label:"사진첩",       route:"#게시판/gallery" },
-      { key:"free",    label:"자유게시판",   route:"#게시판/free" }
-    ],
-    "전자결재": [
-      { key:"ea-inbox", label:"받은결재함", route:"#전자결재/ea-inbox" },
-      { key:"ea-sent",  label:"보낸결재함", route:"#전자결재/ea-sent" },
-      { key:"ea-write", label:"문서작성",   route:"#전자결재/ea-write" }
-    ],
-    "일정관리": [
-      { key:"vacation",         label:"휴가관리",     route:"#일정관리/vacation" },
-      { key:"company-calendar", label:"회사공식일정", route:"#일정관리/company-calendar" }
-    ],
-    "업무관리": [
-      { key:"shortcut", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" }
-    ]
-  };
+  /* =========================
+ * (A) SIDE_MENUS - "일정관리" 소메뉴 1개로 축소
+ * ========================= */
+const SIDE_MENUS = {
+  "전자메일": [
+    { key:"mail-inbox",     label:"받은편지함",     route:"#전자메일/mail-inbox" },
+    { key:"mail-sent",      label:"보낸편지함",     route:"#전자메일/mail-sent" },
+    { key:"mail-draft",     label:"임시보관함",     route:"#전자메일/mail-draft" },
+    { key:"mail-scheduled", label:"예약메세지보기", route:"#전자메일/mail-scheduled" },
+    { key:"mail-starred",   label:"중요편지함",     route:"#전자메일/mail-starred" },
+  ],
+  "게시판": [
+    { key:"ceo",     label:"CEO Message", route:"#게시판/ceo" },
+    { key:"notice",  label:"전사공지",     route:"#게시판/notice" },
+    { key:"hr",      label:"인사발령",     route:"#게시판/hr" },
+    { key:"bid",     label:"경조사",       route:"#게시판/bid" },
+    { key:"orders",  label:"수주소식",     route:"#게시판/orders" },
+    { key:"minutes", label:"회의록",       route:"#게시판/minutes" },
+    { key:"weekly",  label:"주간 프로젝트 진행사항", route:"#게시판/weekly" },
+    { key:"manual",  label:"매뉴얼",       route:"#게시판/manual" },
+    { key:"gallery", label:"사진첩",       route:"#게시판/gallery" },
+    { key:"free",    label:"자유게시판",   route:"#게시판/free" }
+  ],
+  "전자결재": [
+    { key:"ea-inbox", label:"받은결재함", route:"#전자결재/ea-inbox" },
+    { key:"ea-sent",  label:"보낸결재함", route:"#전자결재/ea-sent" },
+    { key:"ea-write", label:"문서작성",   route:"#전자결재/ea-write" }
+  ],
+
+  // ✅ 여기 변경
+  "일정관리": [
+    { key:"schedule", label:"일정관리", route:"#일정관리/home" }
+  ],
+
+  "업무관리": [
+    { key:"shortcut", label:"업무관리 바로가기", route:"#업무관리/shortcut", action:"openApp2" }
+  ]
+};
+
 
   function firstMenuRoute(tabKey){
     if (tabKey === "대쉬보드") return "#대쉬보드/home";
@@ -850,13 +856,17 @@
       onGo: ()=> location.hash = "#전자결재/ea-inbox"
     });
 
-    const cardSchedule = dashListCard({
-      title: "일정관리",
-      subtitle: "다가오는 휴가/외근",
-      items: upcoming.map(e => ({ title: `${e.type} · ${e.name}`, meta: `${e.date} · ${e.note || ""}`.trim() })),
-      emptyText: "다가오는 휴가/외근 일정이 없습니다.",
-      onGo: ()=> location.hash = "#일정관리/vacation"
-    });
+    /* =========================
+ * (B) 대쉬보드 카드에서 일정관리 이동 라우트 수정
+ * ========================= */
+const cardSchedule = dashListCard({
+  title: "일정관리",
+  subtitle: "다가오는 휴가/외근",
+  items: upcoming.map(e => ({ title: `${e.type} · ${e.name}`, meta: `${e.date} · ${e.note || ""}`.trim() })),
+  emptyText: "다가오는 휴가/외근 일정이 없습니다.",
+  onGo: ()=> location.hash = "#일정관리/home" // ✅ 변경
+});
+
 
     const wrap = dom(`<div class="dashWrap"></div>`);
     const grid = dom(`<div class="dashGrid"></div>`);
@@ -1491,24 +1501,20 @@
    - 회사공식일정: 휴가/외근 제외(없으면 전체 표시)
 */
 
-function viewSchedule(db, sub){
+/* =========================
+ * (D) viewSchedule 교체 (필터형)
+ * ========================= */
+function viewSchedule(db){
   if (!els.view) return;
   els.view.innerHTML = "";
 
-  const isVacation = (sub === "vacation");
-  const label = isVacation ? "휴가관리" : "회사공식일정";
-  const title = `일정관리 · ${label}`;
+  const title = "일정관리";
   setRouteTitle(title);
 
-  const all = Array.isArray(db.staffSchedules) ? db.staffSchedules.slice() : [];
+  const FILTERS = ["전체","회사공식일정","휴가","외근","생일"];
 
-  // ✅ 메뉴별 필터(데이터가 부족하면 전체로 fallback)
-  const filtered = (() => {
-    const vac = all.filter(e => (e.type === "휴가" || e.type === "외근"));
-    const nonVac = all.filter(e => !(e.type === "휴가" || e.type === "외근"));
-    if (isVacation) return vac.length ? vac : all;
-    return nonVac.length ? nonVac : all;
-  })();
+  const allSchedules = Array.isArray(db.staffSchedules) ? db.staffSchedules.slice() : [];
+  const bdays = Array.isArray(db.birthdays) ? db.birthdays.slice() : [];
 
   // YYYY-MM-DD 안전 파싱
   const parseYMD = (s)=>{
@@ -1516,46 +1522,34 @@ function viewSchedule(db, sub){
     if (!m) return null;
     const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
     const dt = new Date(y, mo-1, d, 0,0,0,0);
-    // 유효성 체크
     if (dt.getFullYear() !== y || (dt.getMonth()+1) !== mo || dt.getDate() !== d) return null;
     return dt;
   };
   const ymd = (dt)=> `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
   const ymLabel = (dt)=> `${dt.getFullYear()}년 ${pad2(dt.getMonth()+1)}월`;
 
-  // date -> events[]
-  const map = new Map();
-  filtered.forEach(e=>{
-    const d = String(e.date||"");
-    if (!d) return;
-    if (!map.has(d)) map.set(d, []);
-    map.get(d).push(e);
-  });
-
-  // UI state
-  const uiKey = `CONCOST_SCHEDULE_UI_V1_${isVacation ? "vacation" : "company"}`;
+  const uiKey = "CONCOST_SCHEDULE_UI_V2";
   const ui = safeParse(localStorage.getItem(uiKey) || "{}", {});
   const today = new Date();
+
   const initMonth = (() => {
     const saved = parseYMD(String(ui.month || ""));
     if (saved) return new Date(saved.getFullYear(), saved.getMonth(), 1);
     return new Date(today.getFullYear(), today.getMonth(), 1);
   })();
-  const initSelected = (() => {
-    const saved = parseYMD(String(ui.selected || ""));
-    if (saved) return ymd(saved);
-    return ymd(today);
-  })();
 
+  ui.filter = FILTERS.includes(ui.filter) ? ui.filter : "전체";
   ui.month = ymd(initMonth);
-  ui.selected = initSelected;
+  ui.selected = parseYMD(String(ui.selected || "")) ? String(ui.selected) : ymd(today);
   localStorage.setItem(uiKey, JSON.stringify(ui));
 
-  // Layout (게시판 느낌: Head + Card)
   const wrap = dom(`
     <div class="boardWrap">
       <div class="boardHead card">
-        <div class="boardHeadTitle">${escapeHtml(title)}</div>
+        <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="boardHeadTitle" style="margin:0;">${escapeHtml(title)}</div>
+          <div class="schedFilters" id="schedFilters" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;"></div>
+        </div>
       </div>
 
       <div class="boardCard card" style="padding:12px;">
@@ -1567,7 +1561,6 @@ function viewSchedule(db, sub){
           </div>
 
           <div style="font-weight:1100; font-size:16px; letter-spacing:-0.2px;" id="calMonthLabel"></div>
-
           <div class="badge" id="calCount" style="white-space:nowrap;"></div>
         </div>
 
@@ -1587,6 +1580,7 @@ function viewSchedule(db, sub){
 
   els.view.appendChild(wrap);
 
+  const elFilters = byId("schedFilters");
   const elPrev = byId("calPrev");
   const elNext = byId("calNext");
   const elToday = byId("calToday");
@@ -1596,15 +1590,78 @@ function viewSchedule(db, sub){
   const elDayTitle = byId("dayTitle");
   const elDayList = byId("dayList");
 
-  function saveUI(){
-    localStorage.setItem(uiKey, JSON.stringify(ui));
+  function saveUI(){ localStorage.setItem(uiKey, JSON.stringify(ui)); }
+
+  function buildBirthdayEventsForMonth(monthDate){
+    // monthDate: 해당 월 1일 (Date)
+    const y = monthDate.getFullYear();
+    const m = monthDate.getMonth(); // 0-based
+    const lastDay = new Date(y, m+1, 0).getDate();
+
+    const out = [];
+    for (const b of bdays){
+      const md = String(b.md || "");
+      const mmdd = md.match(/^(\d{2})-(\d{2})$/);
+      if (!mmdd) continue;
+      const mm = Number(mmdd[1]);
+      const dd = Number(mmdd[2]);
+      if ((mm-1) !== m) continue;
+      if (dd < 1 || dd > lastDay) continue;
+
+      out.push({
+        evId: String(b.bId || uuid()),
+        type: "생일",
+        name: String(b.name || "ㅇㅇㅇ 사원"),
+        date: `${y}-${pad2(mm)}-${pad2(dd)}`,
+        note: ""
+      });
+    }
+    return out;
   }
 
-  function renderDayDetail(dayStr){
+  function filteredEventsForCurrentMonth(monthDate){
+    const monthBdays = buildBirthdayEventsForMonth(monthDate);
+
+    const base = allSchedules.slice();
+    const f = ui.filter;
+
+    if (f === "휴가") return base.filter(e => String(e.type) === "휴가");
+    if (f === "외근") return base.filter(e => String(e.type) === "외근");
+    if (f === "회사공식일정") return base.filter(e => !["휴가","외근"].includes(String(e.type||"")));
+    if (f === "생일") return monthBdays.slice();
+
+    // 전체
+    return base.concat(monthBdays);
+  }
+
+  function renderFilters(){
+    if (!elFilters) return;
+    elFilters.innerHTML = "";
+
+    FILTERS.forEach(k=>{
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "schedFilterBtn btn tiny" + (ui.filter === k ? " active" : "");
+      b.textContent = k;
+      b.addEventListener("click", ()=>{
+        ui.filter = k;
+        saveUI();
+        // 월/일 상세를 현재 상태로 재렌더
+        const cur = parseYMD(ui.month) || new Date(today.getFullYear(), today.getMonth(), 1);
+        renderMonth(new Date(cur.getFullYear(), cur.getMonth(), 1));
+        renderFilters();
+      });
+      elFilters.appendChild(b);
+    });
+  }
+
+  function renderDayDetail(dayStr, monthDate){
     ui.selected = dayStr;
     saveUI();
 
-    const items = (map.get(dayStr) || []).slice();
+    const itemsAll = filteredEventsForCurrentMonth(monthDate);
+    const items = itemsAll.filter(e => String(e.date||"") === String(dayStr));
+
     if (elDayTitle) elDayTitle.textContent = `${dayStr} 일정`;
 
     if (!elDayList) return;
@@ -1615,7 +1672,6 @@ function viewSchedule(db, sub){
       return;
     }
 
-    // 같은 날짜 내 정렬(휴가/외근 먼저, 이름/노트)
     items.sort((a,b)=>{
       const ta = String(a.type||"");
       const tb = String(b.type||"");
@@ -1647,12 +1703,23 @@ function viewSchedule(db, sub){
 
     if (elMonthLabel) elMonthLabel.textContent = ymLabel(m0);
 
-    // 이 달에 속하는 일정 개수
     const y = m0.getFullYear();
-    const m = m0.getMonth(); // 0-based
+    const m = m0.getMonth();
     const start = new Date(y, m, 1);
     const end = new Date(y, m+1, 1);
 
+    const itemsAll = filteredEventsForCurrentMonth(m0);
+
+    // date -> events[]
+    const map = new Map();
+    itemsAll.forEach(e=>{
+      const d = String(e.date||"");
+      if (!d) return;
+      if (!map.has(d)) map.set(d, []);
+      map.get(d).push(e);
+    });
+
+    // 이 달에 속하는 일정 개수
     let monthCount = 0;
     for (const [k, arr] of map.entries()){
       const dt = parseYMD(k);
@@ -1661,14 +1728,12 @@ function viewSchedule(db, sub){
     }
     if (elCount) elCount.textContent = `${monthCount}건`;
 
-    // grid
     if (!elGrid) return;
     elGrid.innerHTML = "";
 
-    const firstDow = start.getDay(); // 0=Sun
+    const firstDow = start.getDay();
     const lastDay = new Date(y, m+1, 0).getDate();
 
-    // leading blanks
     for (let i=0;i<firstDow;i++){
       elGrid.appendChild(dom(`<div class="cal-cell cal-empty"></div>`));
     }
@@ -1715,8 +1780,8 @@ function viewSchedule(db, sub){
       cell.addEventListener("click", ()=>{
         ui.selected = key;
         saveUI();
-        renderMonth(m0);      // 선택 표시 갱신
-        renderDayDetail(key); // 상세 갱신
+        renderMonth(m0);
+        renderDayDetail(key, m0);
       });
 
       elGrid.appendChild(cell);
@@ -1729,30 +1794,31 @@ function viewSchedule(db, sub){
       saveUI();
     }
 
-    renderDayDetail(ui.selected);
+    renderDayDetail(ui.selected, m0);
   }
 
   if (elPrev) elPrev.addEventListener("click", ()=>{
     const cur = parseYMD(ui.month) || new Date(today.getFullYear(), today.getMonth(), 1);
-    const prev = new Date(cur.getFullYear(), cur.getMonth()-1, 1);
-    renderMonth(prev);
+    renderMonth(new Date(cur.getFullYear(), cur.getMonth()-1, 1));
   });
 
   if (elNext) elNext.addEventListener("click", ()=>{
     const cur = parseYMD(ui.month) || new Date(today.getFullYear(), today.getMonth(), 1);
-    const next = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
-    renderMonth(next);
+    renderMonth(new Date(cur.getFullYear(), cur.getMonth()+1, 1));
   });
 
   if (elToday) elToday.addEventListener("click", ()=>{
-    ui.month = ymd(new Date(today.getFullYear(), today.getMonth(), 1));
+    const m0 = new Date(today.getFullYear(), today.getMonth(), 1);
+    ui.month = ymd(m0);
     ui.selected = ymd(today);
     saveUI();
-    renderMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+    renderMonth(m0);
   });
 
+  renderFilters();
   renderMonth(initMonth);
 }
+
 
 
   function viewWorkShortcut(){
@@ -1845,9 +1911,15 @@ function viewSchedule(db, sub){
     } else if (t === "전자결재"){
       if (page === "ea-write") viewPlaceholder("전자결재 · 문서작성 (준비중)");
       else viewEA(db, page);
-    } else if (t === "일정관리"){
-      viewSchedule(db, page);
-    } else if (t === "업무관리"){
+    /* =========================
+ * (C) route() 내 일정관리 라우팅 (home으로 고정)
+ * ========================= */
+} else if (t === "일정관리"){
+  // ✅ 어떤 page로 와도 home으로 정규화
+  if (page !== "home") { location.hash = "#일정관리/home"; return; }
+  viewSchedule(db);
+}
+ else if (t === "업무관리"){
       if (page === "shortcut") viewWorkShortcut();
       else location.hash = "#업무관리/shortcut";
     } else {
