@@ -1095,22 +1095,7 @@ if (!showCatTabs) ui.cat = "basic"; // 받은/보낸이 아니면 항상 basic
 
   let filteredCache = [];
 
-     // ✅ 카테고리 탭 필터(받은/보낸에서만)
-if (showCatTabs){
-  const subOf = (m)=> String(m.subject || "");
-  if (ui.cat === "checklist"){
-    items = items.filter(m => subOf(m).includes("[체크리스트 자료]"));
-  } else if (ui.cat === "deliver"){
-    // 납품메일 기준: subject에 "_납품" 포함 (원하는 규칙으로 조정 가능)
-    items = items.filter(m => subOf(m).includes("_납품") || subOf(m).includes("납품"));
-  } else {
-    // basic: 위 두 분류에 해당하는 건 제외하고 싶으면 아래처럼
-    items = items.filter(m => {
-      const s = subOf(m);
-      return !(s.includes("[체크리스트 자료]") || s.includes("_납품") || s.includes("납품"));
-    });
-  }
-}
+     
 
 
   // 필터: (1) 검색 (2) 중요편지함이면 star true만
