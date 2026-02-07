@@ -242,14 +242,15 @@ mails: [
    { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 아이템 변경 요청", from:"ㅇㅇ건설", at:"2026-01-21 10:03" },
    { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 내역 반영 요청", from:"ㅇㅇ건설", at:"2026-01-20 10:03" },
    { mailId: uuid(), box:"inbox", subject:"[ㅇㅇ건설(주)] ㅇㅇ 프로젝트 수정요청", from:"ㅇㅇ건설", at:"2026-01-19 10:03" },
-  { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", at:"2026-01-23 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 2차 자료 송부_(주)컨코스트", at:"2026-01-22 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 3차 자료 송부_(주)컨코스트", at:"2026-01-21 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 작업 데이터 송부", from:"(보낸메일)", at:"2026-01-20 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 산출서 송부", from:"(보낸메일)", at:"2026-01-19 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 작업도면 송부", from:"(보낸메일)", at:"2026-01-18 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 도면 수정에 의한 자료 송부", from:"(보낸메일)", at:"2026-01-17 16:22" },
-   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 물량 비교표 송부", from:"(보낸메일)", at:"2026-01-16 16:22" },
+  
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 1차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설", at:"2026-01-23 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 2차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설",  at:"2026-01-22 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇ프로젝트 신축공사 견적용역_납품 3차 자료 송부_(주)컨코스트", from:"ㅇㅇ건설",  at:"2026-01-21 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 작업 데이터 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-20 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 산출서 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-19 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 작업도면 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-18 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 도면 수정에 의한 자료 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-17 16:22" },
+   { mailId: uuid(), box:"sent",  subject:"[ㅇㅇ건설(주)] ㅇㅇㅇ프로젝트 구조 물량 비교표 송부", from:"(보낸메일)", from:"ㅇㅇ건설",  at:"2026-01-16 16:22" },
 
   // ✅ 체크리스트(예시)
   { mailId: uuid(), box:"inbox", subject:'[체크리스트 자료]ㅇㅇㅇ 프로젝트 PM "ㅇㅇㅇ" 체크리스트 송부', from:"PMO", at:"2026-02-02 09:40" },
@@ -304,6 +305,31 @@ mails: [
 
   function upgradeDB(db){
     const seed = makeSeedDB();
+     function syncSeedMails(db, seed){
+  // seed 버전이 바뀌면, seed에 있는 메일을 db에 "병합"한다 (중복은 box+subject+at 기준)
+  const prevVer = String(db?.meta?.seedMailsVersion || "");
+  const nextVer = String(seed?.meta?.seedMailsVersion || "");
+  if (!nextVer) return;
+
+  // 버전이 같으면 아무것도 안함
+  if (prevVer === nextVer) return;
+
+  const exist = new Set(
+    (db.mails || []).map(m => `${m.box}||${m.subject}||${m.at}`)
+  );
+
+  (seed.mails || []).forEach(m=>{
+    const k = `${m.box}||${m.subject}||${m.at}`;
+    if (!exist.has(k)){
+      db.mails.push(m);
+      exist.add(k);
+    }
+  });
+
+  db.meta.seedMailsVersion = nextVer;
+}
+
+     
     if (!isPlainObject(db)) return seed;
 
     if (!isPlainObject(db.meta)) db.meta = {};
@@ -311,9 +337,22 @@ mails: [
     if (typeof db.meta.createdAt !== "string") db.meta.createdAt = seed.meta.createdAt;
 
     const ARR_FIELDS = ["users","projects","mails","boardPosts","approvals","staffSchedules","birthdays","logs","checklists"];
-    for (const k of ARR_FIELDS){
-      if (!Array.isArray(db[k])) db[k] = Array.isArray(seed[k]) ? seed[k].slice() : [];
-    }
+for (const k of ARR_FIELDS){
+  if (!Array.isArray(db[k])) db[k] = Array.isArray(seed[k]) ? seed[k].slice() : [];
+}
+
+// ✅ 여기 추가
+syncSeedMails(db, seed);
+
+// 이후 기존 map 정규화 로직 계속
+db.mails = db.mails.map(m => ({
+  mailId: String(m?.mailId || uuid()),
+  box: String(m?.box || "inbox"),
+  subject: String(m?.subject || ""),
+  from: String(m?.from || ""),
+  at: String(m?.at || "")
+}));
+
     if (!db.users.length) db.users = seed.users.slice();
     if (!db.projects.length) db.projects = seed.projects.slice();
 
