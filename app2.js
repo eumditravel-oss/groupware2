@@ -813,44 +813,256 @@ function renderSide2(db){
   }
 
   function viewDashboard(db){
-    const view = $("#view2");
-    view.innerHTML = "";
-    setRouteTitle("업무관리 · 프로젝트 소요시간");
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 프로젝트 소요시간");
 
-    const projects = db.projects || [];
-    const stats = projects.map(p=>{
-      const days = computeProjectDays(db, p.projectId);
-      const headcount = computeProjectHeadcount(db, p.projectId);
-      const approvedEntries = (db.logs||[]).filter(l=>l.status==="approved" && l.projectId===p.projectId).length;
-      return { ...p, days, headcount, approvedEntries };
-    });
+  // -----------------------
+  // state (localStorage)
+  // -----------------------
+  const LS_SEL = "APP2_WORKTIME_SELECTED";
+  const LS_Q   = "APP2_WORKTIME_QUERY";
+  const LS_F   = "APP2_WORKTIME_FILTER"; // "all" | "구조" | "토목ㆍ조경" | "마감"
 
-    if (!stats.length){
-      view.appendChild(el("div", { class:"card2", style:"padding:14px;" }, "프로젝트가 없습니다."));
+  let query = (localStorage.getItem(LS_Q) || "").trim();
+  let filter = (localStorage.getItem(LS_F) || "all");
+  let selectedId = (localStorage.getItem(LS_SEL) || "");
+
+  // -----------------------
+  // helpers
+  // -----------------------
+  const logs = Array.isArray(db.logs) ? db.logs : [];
+  const users = Array.isArray(db.users) ? db.users : [];
+  const projects = Array.isArray(db.projects) ? db.projects : [];
+
+  function userName(uid){
+    return (users.find(u => u.userId === uid)?.name) || uid || "-";
+  }
+
+  function uniq(arr){
+    return Array.from(new Set(arr));
+  }
+
+  function projText(p){
+    const code = p.projectCode || p.projectId || "";
+    const name = p.projectName || "";
+    return `${code} ${name}`.trim();
+  }
+
+  // 승인된 로그 기준으로 프로젝트가 어떤 파트 작업을 갖는지 추정(데이터에 별도 태그가 없어서)
+  function projectHasPart(projectId, part){
+    return logs.some(l => l.status === "approved" && l.projectId === projectId && (l.category || "") === part);
+  }
+
+  function projectMatchesFilter(projectId){
+    if (filter === "all") return true;
+    return projectHasPart(projectId, filter);
+  }
+
+  function projectMatchesQuery(p){
+    if (!query) return true;
+    const t = (projText(p) || "").toLowerCase();
+    return t.includes(query.toLowerCase());
+  }
+
+  function computePartStats(projectId, part){
+    const partLogs = logs.filter(l =>
+      l.status === "approved" &&
+      l.projectId === projectId &&
+      (l.category || "") === part
+    );
+
+    const days = uniq(partLogs.map(l => `${l.projectId}__${l.date}`)).length;
+    const peopleIds = uniq(partLogs.map(l => l.writerId).filter(Boolean));
+    const peopleNames = peopleIds.map(userName);
+
+    // "작업일수"를 날짜 기준으로 보고(승인된 일지 날짜)
+    return {
+      part,
+      days,
+      headcount: peopleIds.length,
+      peopleNames
+    };
+  }
+
+  function computeTotalDays(projectId){
+    const approved = logs.filter(l => l.status === "approved" && l.projectId === projectId);
+    return uniq(approved.map(l => `${l.projectId}__${l.date}`)).length;
+  }
+
+  function pickDefaultProjectId(list){
+    if (selectedId && list.some(p => p.projectId === selectedId)) return selectedId;
+    return list[0]?.projectId || "";
+  }
+
+  // -----------------------
+  // UI: Top controls (검색 + 필터)
+  // -----------------------
+  const qInput = el("input", {
+    class:"wtSearch2",
+    type:"text",
+    placeholder:"프로젝트 검색 (코드/명칭)",
+    value: query,
+    oninput:(e)=>{
+      query = (e.target.value || "").trim();
+      localStorage.setItem(LS_Q, query);
+      rerender();
+    }
+  });
+
+  function filterChip(label, value){
+    const active = (filter === value);
+    return el("button", {
+      class:`wtChip2 ${active ? "active" : ""}`,
+      onclick:()=>{
+        filter = value;
+        localStorage.setItem(LS_F, filter);
+        rerender();
+      }
+    }, label);
+  }
+
+  const topBar = el("div", { class:"card2 wtTop2" },
+    el("div", { class:"wtTopRow2" },
+      qInput,
+      el("div", { class:"wtChips2" },
+        filterChip("전체", "all"),
+        filterChip("구조", "구조"),
+        filterChip("토목ㆍ조경", "토목ㆍ조경"),
+        filterChip("마감", "마감")
+      )
+    )
+  );
+
+  // -----------------------
+  // Layout containers
+  // -----------------------
+  const left = el("div", { class:"card2 wtLeft2" });
+  const right = el("div", { class:"card2 wtRight2" });
+
+  const body = el("div", { class:"wtLayout2" }, left, right);
+
+  view.appendChild(topBar);
+  view.appendChild(body);
+
+  // -----------------------
+  // Render
+  // -----------------------
+  function rerender(){
+    // 1) list filtering
+    const list = projects
+      .filter(p => projectMatchesQuery(p))
+      .filter(p => projectMatchesFilter(p.projectId));
+
+    if (!list.length){
+      left.innerHTML = "";
+      right.innerHTML = "";
+      left.appendChild(el("div", { class:"wtEmpty2" }, "조건에 맞는 프로젝트가 없습니다."));
+      right.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하면 상세가 표시됩니다."));
       return;
     }
 
-    const selected = stats[0].projectId;
-    const sp = projById(db, selected);
+    // 2) selected
+    selectedId = pickDefaultProjectId(list);
+    localStorage.setItem(LS_SEL, selectedId);
 
-    const breakdown = computeProjectBreakdown(db, selected);
-    const rows = Object.entries(breakdown).sort((a,b)=>b[1]-a[1]).slice(0, 12);
+    // 3) render left list
+    left.innerHTML = "";
+    left.appendChild(el("div", { class:"card2-title" }, "프로젝트 리스트"));
 
-    view.appendChild(
-      el("div", { class:"card2", style:"padding:12px 14px;" },
-        el("div", { style:"font-weight:1100;margin-bottom:10px;" }, `Selected: ${sp?.projectName||"-"}`),
-        rows.length ? el("div", { style:"display:flex;flex-direction:column;gap:8px;" },
-          ...rows.map(([k,v])=>{
-            const [cat, proc] = k.split("||");
-            return el("div", { style:"border:1px solid var(--line);border-radius:12px;padding:10px;" },
-              el("div", { style:"font-weight:1100;" }, `${cat} · ${proc}`),
-              el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:4px;" }, `${v}%`)
-            );
-          })
-        ) : el("div", { style:"color:var(--muted);font-weight:900;" }, "승인된 업무일지가 없습니다.")
+    const listHost = el("div", { class:"wtList2" });
+    list.forEach(p=>{
+      const active = (p.projectId === selectedId);
+
+      // 좌측 1줄 요약(필요하면 확장)
+      const days = computeTotalDays(p.projectId);
+
+      listHost.appendChild(
+        el("button", {
+          class:`wtProjItem2 ${active ? "active" : ""}`,
+          onclick:()=>{
+            selectedId = p.projectId;
+            localStorage.setItem(LS_SEL, selectedId);
+            rerender();
+          }
+        },
+          el("div", { class:"wtProjTitle2" }, projText(p) || "(무제)"),
+          el("div", { class:"wtProjMeta2" }, `총 소요일수: ${days}일`)
+        )
+      );
+    });
+    left.appendChild(listHost);
+
+    // 4) render right detail
+    const sp = projById(db, selectedId);
+    right.innerHTML = "";
+    right.appendChild(el("div", { class:"card2-title" }, "프로젝트 상세"));
+
+    // 프로젝트 기본정보(없으면 "-"로)
+    const use = sp?.buildingUse || sp?.use || sp?.purpose || "-";
+    const area = sp?.grossArea || sp?.area || sp?.gfa || "-";
+    const structure = sp?.structureType || sp?.structure || "-";
+
+    const header = el("div", { class:"wtDetailHead2" },
+      el("div", { class:"wtDetailTitle2" }, sp?.projectName || "(프로젝트명 없음)"),
+      el("div", { class:"wtDetailSub2" }, (sp?.projectCode || sp?.projectId || "")),
+      el("div", { class:"wtInfoGrid2" },
+        el("div", { class:"wtInfoItem2" },
+          el("div", { class:"wtInfoLabel2" }, "건물용도"),
+          el("div", { class:"wtInfoVal2" }, String(use))
+        ),
+        el("div", { class:"wtInfoItem2" },
+          el("div", { class:"wtInfoLabel2" }, "연면적"),
+          el("div", { class:"wtInfoVal2" }, String(area))
+        ),
+        el("div", { class:"wtInfoItem2" },
+          el("div", { class:"wtInfoLabel2" }, "구조형식"),
+          el("div", { class:"wtInfoVal2" }, String(structure))
+        )
       )
     );
+
+    // 파트별 통계(요구: 작업일수, 투입인원, 이름, 총 소요일수)
+    // 토목ㆍ조경 파트는 현재 로그에 category가 없을 수 있으니(데이터가 들어오면 자동 집계됨)
+    const parts = ["구조","토목ㆍ조경","마감"];
+    const partStats = parts.map(part => computePartStats(selectedId, part));
+    const totalDays = computeTotalDays(selectedId);
+
+    const table = el("div", { class:"wtDetailBody2" },
+      el("div", { class:"wtTotal2" },
+        el("div", { class:"wtTotalLabel2" }, "프로젝트 총 소요일수"),
+        el("div", { class:"wtTotalVal2" }, `${totalDays}일`)
+      ),
+
+      el("div", { class:"wtPartGrid2" },
+        ...partStats.map(s=>{
+          const peopleLine = s.peopleNames.length ? s.peopleNames.join(", ") : "-";
+          return el("div", { class:"wtPartCard2" },
+            el("div", { class:"wtPartTitle2" }, s.part),
+            el("div", { class:"wtPartRow2" },
+              el("div", { class:"wtPartK2" }, "작업일수"),
+              el("div", { class:"wtPartV2" }, `${s.days}일`)
+            ),
+            el("div", { class:"wtPartRow2" },
+              el("div", { class:"wtPartK2" }, "투입인원"),
+              el("div", { class:"wtPartV2" }, `${s.headcount}명`)
+            ),
+            el("div", { class:"wtPartRow2 col" },
+              el("div", { class:"wtPartK2" }, "투입인원 이름"),
+              el("div", { class:"wtPeople2" }, peopleLine)
+            )
+          );
+        })
+      )
+    );
+
+    right.appendChild(header);
+    right.appendChild(table);
   }
+
+  rerender();
+}
+
 
   function viewWorkCalendar(db){
     const view = $("#view2");
