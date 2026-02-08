@@ -128,71 +128,69 @@ function ensureApprovalShape(log){
  *  - 위치: ensureDB() 내부의 "if (db && typeof db === 'object')" 블록
  * ========================= */
 function ensureDB(){
-  let db = loadDB();
+  const db = loadDB();
+  seedSampleProjectsIfEmpty(db);
+ensureChecklistStore(db);
 
-  // 1) DB가 없으면 seed를 먼저 만든다
-  if (!db || typeof db !== "object"){
-    const seed = {
-      meta:{ version:"0.5", createdAt: nowISO() },
-      users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
-      projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
-      logs: [],
-      checklists: [],
-      sharedFiles: [
-        { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
-        { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
-        { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
-      ],
-      tasks: [
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
-      ],
-      messages: [],
-      projectPM: [],
-      boards: {
-        "work-standards": [
-          { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
-        ],
-        "mgmt-plan": [],
-        "mgmt-pt": [],
-        "struct-estimate-write": [],
-        "struct-estimate-manage": [],
-        "civil-estimate-write": [],
-        "civil-estimate-manage": [],
-        "finish-estimate-write": [],
-        "finish-estimate-manage": []
-      },
-      deliveryFiles: [],
-      deliveryAccess: [],
-      deliveryAccessRequests: []
-    };
+  if (db && typeof db === "object") {
+    if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
+    if (!Array.isArray(db.tasks)) db.tasks = [];
+    if (!Array.isArray(db.messages)) db.messages = [];
+    if (!Array.isArray(db.approvals)) db.approvals = [];
+    if (!Array.isArray(db.projectPM)) db.projectPM = [];
+    // ✅ 게시판 데이터(신설)
+    if (!db.boards || typeof db.boards !== "object") db.boards = {};
 
-    localStorage.setItem(LS_KEY, JSON.stringify(seed));
-    db = seed;
+    /* ✅ [ADD] 납품 데이터/권한 */
+    if (!Array.isArray(db.deliveryFiles)) db.deliveryFiles = [];             // 업로드된 납품파일
+    if (!Array.isArray(db.deliveryAccess)) db.deliveryAccess = [];           // 일일 열람 권한(승인 완료)
+    if (!Array.isArray(db.deliveryAccessRequests)) db.deliveryAccessRequests = []; // 권한 요청(대기)
+
+    return db;
   }
 
-  // 2) 여기부터는 db가 항상 object
-  if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
-  if (!Array.isArray(db.tasks)) db.tasks = [];
-  if (!Array.isArray(db.messages)) db.messages = [];
-  if (!Array.isArray(db.approvals)) db.approvals = [];
-  if (!Array.isArray(db.projectPM)) db.projectPM = [];
-  if (!db.boards || typeof db.boards !== "object") db.boards = {};
+  const seed = {
+    meta:{ version:"0.5", createdAt: nowISO() },
+    users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
+    projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
+    logs: [],
+    checklists: [],
+    sharedFiles: [
+      { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+      { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+      { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
+    ],
+    tasks: [
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
+    ],
+    messages: [],
+    projectPM: [],
+    // ✅ 게시판 시드
+    boards: {
+      "work-standards": [
+        { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
+      ],
+      "mgmt-plan": [],
+      "mgmt-pt": [],
+      "struct-estimate-write": [],
+      "struct-estimate-manage": [],
+      "civil-estimate-write": [],
+      "civil-estimate-manage": [],
+      "finish-estimate-write": [],
+      "finish-estimate-manage": []
+    },
 
-  if (!Array.isArray(db.deliveryFiles)) db.deliveryFiles = [];
-  if (!Array.isArray(db.deliveryAccess)) db.deliveryAccess = [];
-  if (!Array.isArray(db.deliveryAccessRequests)) db.deliveryAccessRequests = [];
-
-  // ✅ 이 두 함수가 존재한다는 전제라면 여기서 호출
-  if (typeof seedSampleProjectsIfEmpty === "function") seedSampleProjectsIfEmpty(db);
-  if (typeof ensureChecklistStore === "function") ensureChecklistStore(db);
-
-  saveDB(db);
-  return db;
+    /* ✅ [ADD] 납품 데이터/권한 (seed) */
+    deliveryFiles: [],
+    deliveryAccess: [],
+    deliveryAccessRequests: []
+  };
+  localStorage.setItem(LS_KEY, JSON.stringify(seed));
+  return seed;
 }
-
 
 
   function getUserId(db){
@@ -272,19 +270,18 @@ const MENU = [
   label: "업무관리",
   kind: "group",
   items: [
-  { key:"work-project", label:"프로젝트 작성", type:"route" },
-  { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
-  { key:"work-standards", label:"건설사별 기준서", type:"board" },
-  { key:"work-log", label:"업무일지", type:"route" },
-  { key:"work-approve", label:"업무일지 승인", type:"route" },
-  { key:"work-time", label:"프로젝트 소요시간", type:"route" },
-  { key:"work-schedule", label:"종합 공정관리", type:"route" },
+    { key:"work-project", label:"프로젝트 작성", type:"route" },
+    { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
+    { key:"work-standards", label:"건설사별 기준서", type:"board" },
+    { key:"work-log", label:"업무일지", type:"route" },
+    { key:"work-approve", label:"업무일지 승인", type:"route" },
+    { key:"work-time", label:"프로젝트 소요시간", type:"route" },
+    { key:"work-schedule", label:"종합 공정관리", type:"route" },
 
-  { key:"work-delivery", label:"납품 프로젝트 관리", type:"route" },
-  { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" } // ✅ 콤마 필수
-  
-]
-
+    /* ✅ [ADD] 종합 공정관리 하위 성격 */
+    { key:"work-delivery", label:"납품 프로젝트 관리", type:"route" },
+    { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" }
+  ]
 },
 
   {
@@ -303,8 +300,8 @@ const MENU = [
     label: "구조ㆍBIM팀",
     kind: "group",
     items: [
-      { key:"work-check-struct", label:"프로젝트 체크리스트(구조·BIM)", type:"route" },
-            { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
+      { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
+      { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"struct-estimate-write", label:"견적조건 작성", type:"board" },
       { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" },
       { key:"struct-fin", label:"철골ㆍ철콘산출(FIN)", type:"link", url:"https://eumditravel-oss.github.io/FIN2/" }
@@ -316,7 +313,7 @@ const MENU = [
     label: "토목ㆍ조경팀",
     kind: "group",
     items: [
-      { key:"work-check-civil",  label:"프로젝트 체크리스트(토목·조경)", type:"route" },
+      { key:"civil-checklist", label:"프로젝트별 체크리스트", type:"route" },
       { key:"civil-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"civil-estimate-write", label:"견적조건 작성", type:"board" },
       { key:"civil-estimate-manage", label:"견적조건 관리", type:"board" }
@@ -327,7 +324,7 @@ const MENU = [
     label: "마감팀",
     kind: "group",
     items: [
-      { key:"work-check-finish", label:"프로젝트 체크리스트(마감)", type:"route" },
+      { key:"finish-checklist", label:"프로젝트별 체크리스트", type:"route" },
       { key:"finish-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"finish-estimate-write", label:"견적조건 작성", type:"board" },
       { key:"finish-estimate-manage", label:"견적조건 관리", type:"board" }
@@ -368,15 +365,9 @@ function allowedKeysFor(user){
   if (!isStaff(user)) return all;
 
   const denied = new Set([
-  "work-approve",
-  "work-check-struct",
-  "work-check-civil",
-  "work-check-finish",
-  "struct-checklist",
-  "civil-checklist",
-  "finish-checklist"
-]);
-
+    "work-approve",
+    "struct-checklist","civil-checklist","finish-checklist"
+  ]);
   for (const k of denied) all.delete(k);
   return all;
 }
@@ -3197,48 +3188,6 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
 }
 
 
-  /***********************
- * ✅ CHECKLIST (공통) - 구조/BIM, 토목/조경, 마감
- ***********************/
-function ensureChecklistShapes(db){
-  db.projects = Array.isArray(db.projects) ? db.projects : []; // 이미 있으면 그대로
-  db.checklists = Array.isArray(db.checklists) ? db.checklists : [];
-  db.checklistApprovals = Array.isArray(db.checklistApprovals) ? db.checklistApprovals : [];
-}
-
-/**
- * checklists[] 레코드 구조
- * {
- *   clId, teamCode, projectId,
- *   title, description,
- *   status: "draft"|"submitted"|"approved"|"rejected",
- *   createdBy, createdByName, createdAt,
- *   updatedAt,
- *   submittedAt,
- *   decidedBy, decidedAt, rejectReason,
- *   items: [
- *     { itemId, text, done, doneBy, doneAt, comment, attachments:[{name,dataUrl,createdAt,by}] }
- *   ]
- * }
- */
-
-const TEAM_LABEL = {
-  "struct_bim":"구조·BIM팀",
-  "civil_land":"토목·조경팀",
-  "finish":"마감팀"
-};
-
-function canChecklistManageAll(me){
-  // 팀장 이상은 전체 관리(승인/반려/삭제)
-  return roleRank(me?.role || "staff") >= roleRank("manager");
-}
-function canChecklistWrite(me){
-  // 기본: 사원 이상 작성 가능(필요하면 role 조건 강화)
-  return roleRank(me?.role || "staff") >= roleRank("staff");
-}
-
-
-
   /* =========================
  * 4) 납품 권한/파일 공통 헬퍼 + 뷰 2개 구현
  *  - 위치: 기존 뷰들(viewLog/viewApprove/...) 근처 아무 곳(추천: viewWorkCalendar 아래)
@@ -3301,598 +3250,6 @@ function downloadDataUrl(filename, dataUrl){
     toast("다운로드에 실패했습니다.");
   }
 }
-
-
-  function viewChecklistTeam(db, teamCode){
-  const view = $("#view2");
-  view.innerHTML = "";
-
-  ensureChecklistShapes(db);
-
-  const uid = getUserId(db);
-  const me = userById(db, uid);
-  const teamName = TEAM_LABEL[teamCode] || teamCode;
-
-  setRouteTitle(`${teamName} · 프로젝트 체크리스트`);
-
-  const isManagerPlus = canChecklistManageAll(me);
-  const canWrite = canChecklistWrite(me);
-
-  // ---------- 상단: 프로젝트 선택 ----------
-  let selectedPid = "";
-  const projBox = el("input", {
-    class:"btn2",
-    type:"text",
-    value:"",
-    placeholder:"프로젝트 선택(필수)",
-    readOnly:true,
-    style:"cursor:pointer;"
-  });
-
-  projBox.addEventListener("click", ()=>{
-    openProjectSearchPicker(db, (pid, label)=>{
-      selectedPid = pid;
-      projBox.value = label || "";
-      renderList();
-    });
-  });
-
-  const clearProjBtn = el("button", {
-    class:"btn2 ghost2",
-    onclick:()=>{
-      selectedPid = "";
-      projBox.value = "";
-      renderList();
-    }
-  }, "선택 해제");
-
-  const headerCard = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;" },
-    el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;" },
-      el("div", { style:"font-weight:1100;" }, "프로젝트별 체크리스트"),
-      el("div", { style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;" }, projBox, clearProjBtn)
-    ),
-    el("div", { style:"margin-top:8px;color:var(--muted);font-size:12px;font-weight:900;line-height:1.5;" },
-      "흐름: 작성(draft) → 제출(submitted) → 승인(approved) / 반려(rejected)\n" +
-      "팀장 이상: 승인/반려/삭제 가능"
-    )
-  );
-
-  // ---------- 신규 체크리스트 생성 ----------
-  const addBtn = el("button", {
-    class:"btn2 primary2",
-    onclick:()=>{
-      if (!canWrite) return toast("작성 권한이 없습니다.");
-      if (!selectedPid) return toast("프로젝트를 먼저 선택해 주세요.");
-
-      openChecklistEditor(db, {
-        mode:"create",
-        teamCode,
-        projectId:selectedPid
-      }, uid);
-    }
-  }, "체크리스트 생성");
-
-  headerCard.appendChild(
-    el("div", { style:"margin-top:10px;display:flex;justify-content:flex-end;gap:8px;" }, addBtn)
-  );
-
-  // ---------- 목록 카드 ----------
-  const listCard = el("div", { class:"card2", style:"padding:12px 14px;" },
-    el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;" },
-      el("div", { style:"font-weight:1100;" }, "체크리스트 목록"),
-      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "프로젝트 선택 시 필터됨")
-    )
-  );
-
-  const listHost = el("div", { class:"boardList2", style:"margin-top:10px;" });
-  listCard.appendChild(listHost);
-
-  view.appendChild(headerCard);
-  view.appendChild(listCard);
-
-  renderList();
-
-  function renderList(){
-    listHost.innerHTML = "";
-
-    const rows = (db.checklists||[])
-      .filter(c => c.teamCode === teamCode)
-      .filter(c => !selectedPid || c.projectId === selectedPid)
-      .sort((a,b)=> (b.updatedAt||b.createdAt||"").localeCompare(a.updatedAt||a.createdAt||""))
-      .slice(0, 300);
-
-    if (!rows.length){
-      listHost.appendChild(
-        el("div", { style:"padding:10px;color:var(--muted);font-weight:900;" },
-          selectedPid ? "해당 프로젝트에 체크리스트가 없습니다." : "프로젝트를 선택하거나 체크리스트를 생성하세요."
-        )
-      );
-      return;
-    }
-
-    rows.forEach(cl=>{
-      const pLabel = projLabel(db, cl.projectId);
-      const statusLabel = checklistStatusLabel(cl.status);
-      const statusBadge = el("span", { class:"pill2", style:`margin-left:8px;${checklistStatusStyle(cl.status)}` }, statusLabel);
-
-      const doneCount = (cl.items||[]).filter(it=>!!it.done).length;
-      const totalCount = (cl.items||[]).length;
-
-      const meta = [
-        `${pLabel}`,
-        `작성: ${cl.createdByName||cl.createdBy||"-"}`,
-        `항목: ${doneCount}/${totalCount}`,
-        `업데이트: ${cl.updatedAt||cl.createdAt||"-"}`
-      ].join(" · ");
-
-      const openBtn = el("button", {
-        class:"btn2 ghost2",
-        onclick:()=> openChecklistDetail(db, cl.clId, uid)
-      }, "열기");
-
-      const approveBtn = el("button", {
-        class:"btn2 primary2",
-        onclick:()=>{
-          if (!isManagerPlus) return toast("승인은 팀장 이상만 가능합니다.");
-          if (cl.status !== "submitted") return toast("제출(submitted) 상태에서만 승인 가능합니다.");
-          checklistApprove(db, cl, uid);
-          saveDB(db);
-          toast("승인 완료");
-          renderList();
-        }
-      }, "승인");
-
-      const rejectBtn = el("button", {
-        class:"btn2 ghost2",
-        onclick:()=>{
-          if (!isManagerPlus) return toast("반려는 팀장 이상만 가능합니다.");
-          if (cl.status !== "submitted") return toast("제출(submitted) 상태에서만 반려 가능합니다.");
-          openChecklistRejectModal(db, cl, uid, ()=>{
-            saveDB(db);
-            toast("반려 처리");
-            renderList();
-          });
-        }
-      }, "반려");
-
-      const delBtn = el("button", {
-        class:"btn2 ghost2",
-        onclick:()=>{
-          if (!isManagerPlus) return toast("삭제는 팀장 이상만 가능합니다.");
-          if (!confirm("이 체크리스트를 삭제할까요?")) return;
-          db.checklists = (db.checklists||[]).filter(x=> x.clId !== cl.clId);
-          saveDB(db);
-          toast("삭제 완료");
-          renderList();
-        }
-      }, "삭제");
-
-      const btnArea = el("div", { style:"display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;" },
-        openBtn,
-        (isManagerPlus ? rejectBtn : null),
-        (isManagerPlus ? approveBtn : null),
-        (isManagerPlus ? delBtn : null)
-      );
-
-      listHost.appendChild(
-        el("div", { class:"boardRow2" },
-          el("div", { class:"boardTitle2" },
-            el("span", {}, cl.title || "(제목 없음)"),
-            statusBadge
-          ),
-          el("div", { class:"boardMeta2" }, meta),
-          btnArea
-        )
-      );
-    });
-  }
-}
-
-function checklistStatusLabel(s){
-  if (s==="draft") return "작성중";
-  if (s==="submitted") return "제출됨";
-  if (s==="approved") return "승인";
-  if (s==="rejected") return "반려";
-  return s || "-";
-}
-function checklistStatusStyle(s){
-  if (s==="draft")    return "background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.10);";
-  if (s==="submitted")return "background:rgba(240,138,36,.16);border:1px solid rgba(240,138,36,.35);";
-  if (s==="approved") return "background:rgba(0,160,90,.14);border:1px solid rgba(0,160,90,.35);";
-  if (s==="rejected") return "background:rgba(220,60,60,.14);border:1px solid rgba(220,60,60,.35);";
-  return "background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.10);";
-}
-
-
-  function openChecklistEditor(db, opts, uid){
-  const me = userById(db, uid);
-
-  const cl = {
-    clId: uuid(),
-    teamCode: opts.teamCode,
-    projectId: opts.projectId,
-    title: "",
-    description: "",
-    status: "draft",
-    createdBy: uid,
-    createdByName: me?.name || uid,
-    createdAt: nowISO(),
-    updatedAt: nowISO(),
-    submittedAt: "",
-    decidedBy: "",
-    decidedAt: "",
-    rejectReason: "",
-    items: []
-  };
-
-  const titleIn = el("input", { class:"in2", type:"text", placeholder:"체크리스트 제목", value:"" });
-  const descIn = el("textarea", { class:"ta2", placeholder:"설명(선택)" });
-
-  const itemsHost = el("div", { class:"boardList2", style:"margin-top:10px;" });
-
-  const addItemIn = el("input", { class:"in2", type:"text", placeholder:"항목 내용 입력 후 Enter" });
-  addItemIn.addEventListener("keydown", (e)=>{
-    if (e.key === "Enter"){
-      e.preventDefault();
-      const t = (addItemIn.value||"").trim();
-      if (!t) return;
-      cl.items.push({
-        itemId: uuid(),
-        text: t,
-        done: false,
-        doneBy: "",
-        doneAt: "",
-        comment: "",
-        attachments: []
-      });
-      addItemIn.value = "";
-      cl.updatedAt = nowISO();
-      rerenderItems();
-    }
-  });
-
-  function rerenderItems(){
-    itemsHost.innerHTML = "";
-    if (!cl.items.length){
-      itemsHost.appendChild(el("div", { style:"padding:10px;color:var(--muted);font-weight:900;" }, "항목이 없습니다. Enter로 추가하세요."));
-      return;
-    }
-    cl.items.forEach((it, idx)=>{
-      const chk = el("input", { type:"checkbox" });
-      chk.checked = !!it.done;
-      chk.addEventListener("change", ()=>{
-        it.done = chk.checked;
-        it.doneBy = it.done ? uid : "";
-        it.doneAt = it.done ? nowISO() : "";
-        cl.updatedAt = nowISO();
-      });
-
-      const txt = el("div", { style:"font-weight:900;white-space:pre-wrap;line-height:1.4;" }, `${idx+1}. ${it.text}`);
-
-      const cmt = el("input", { class:"in2", type:"text", placeholder:"코멘트(선택)", value: it.comment || "" });
-      cmt.addEventListener("input", ()=>{
-        it.comment = cmt.value;
-        cl.updatedAt = nowISO();
-      });
-
-      const attachBtn = el("button", { class:"btn2 ghost2", onclick:()=> openChecklistAttach(db, cl, it, uid) }, "첨부");
-      const delBtn = el("button", { class:"btn2 ghost2", onclick:()=>{
-        if (!confirm("이 항목을 삭제할까요?")) return;
-        cl.items = cl.items.filter(x=> x.itemId !== it.itemId);
-        cl.updatedAt = nowISO();
-        rerenderItems();
-      }}, "삭제");
-
-      const attCount = (it.attachments||[]).length;
-
-      itemsHost.appendChild(
-        el("div", { class:"boardRow2" },
-          el("div", { style:"display:flex;gap:10px;align-items:flex-start;" }, chk, txt),
-          el("div", { class:"boardMeta2" }, attCount ? `첨부 ${attCount}개` : "첨부 없음"),
-          el("div", { style:"display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;" }, attachBtn, delBtn),
-          el("div", { style:"margin-top:8px;" }, cmt)
-        )
-      );
-    });
-  }
-
-  const saveBtn = el("button", { class:"btn2 ghost2", onclick:()=>{
-    cl.title = (titleIn.value||"").trim();
-    cl.description = (descIn.value||"").trim();
-    if (!cl.title) return toast("제목을 입력하세요.");
-    db.checklists.unshift(cl);
-    saveDB(db);
-    toast("저장 완료(작성중)");
-    render();
-  }}, "저장");
-
-  const submitBtn = el("button", { class:"btn2 primary2", onclick:()=>{
-    cl.title = (titleIn.value||"").trim();
-    cl.description = (descIn.value||"").trim();
-    if (!cl.title) return toast("제목을 입력하세요.");
-    if (!cl.items.length) return toast("항목을 1개 이상 추가하세요.");
-
-    cl.status = "submitted";
-    cl.submittedAt = nowISO();
-    cl.updatedAt = nowISO();
-
-    db.checklists.unshift(cl);
-    saveDB(db);
-    toast("제출 완료");
-    render();
-  }}, "제출");
-
-  const body = el("div", {},
-    el("div", { class:"muted2", style:"padding:0 0 10px 0;font-weight:900;" }, `프로젝트: ${projLabel(db, cl.projectId)} · 팀: ${TEAM_LABEL[cl.teamCode]||cl.teamCode}`),
-    titleIn,
-    el("div", { style:"height:8px;" }),
-    descIn,
-    el("div", { style:"height:10px;" }),
-    addItemIn,
-    itemsHost,
-    el("div", { style:"display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap;" }, saveBtn, submitBtn)
-  );
-
-  rerenderItems();
-  modalOpen("체크리스트 생성", body);
-}
-
-function openChecklistDetail(db, clId, uid){
-  ensureChecklistShapes(db);
-
-  const cl = (db.checklists||[]).find(x=> x.clId === clId);
-  if (!cl) return toast("체크리스트를 찾을 수 없습니다.");
-
-  const me = userById(db, uid);
-  const isManagerPlus = canChecklistManageAll(me);
-
-  const doneCount = (cl.items||[]).filter(i=>!!i.done).length;
-  const totalCount = (cl.items||[]).length;
-
-  const head = el("div", { class:"muted2", style:"font-weight:900;line-height:1.5;" },
-    `프로젝트: ${projLabel(db, cl.projectId)}\n` +
-    `상태: ${checklistStatusLabel(cl.status)}\n` +
-    `작성: ${cl.createdByName||cl.createdBy||"-"} · ${cl.createdAt||"-"}\n` +
-    `진행: ${doneCount}/${totalCount}\n` +
-    (cl.status==="rejected" ? `반려사유: ${cl.rejectReason||"-"}\n` : "")
-  );
-
-  const list = el("div", { class:"boardList2", style:"margin-top:10px;" });
-
-  function rerender(){
-    list.innerHTML = "";
-    (cl.items||[]).forEach((it, idx)=>{
-      const chk = el("input", { type:"checkbox" });
-      chk.checked = !!it.done;
-      chk.disabled = (cl.status==="approved"); // 승인 후 잠금
-      chk.addEventListener("change", ()=>{
-        it.done = chk.checked;
-        it.doneBy = it.done ? uid : "";
-        it.doneAt = it.done ? nowISO() : "";
-        cl.updatedAt = nowISO();
-        saveDB(db);
-      });
-
-      const txt = el("div", { style:"font-weight:900;white-space:pre-wrap;line-height:1.4;" }, `${idx+1}. ${it.text}`);
-      const meta = el("div", { class:"boardMeta2" },
-        (it.comment ? `코멘트: ${it.comment}` : "코멘트 없음") +
-        ` · 첨부 ${(it.attachments||[]).length}개`
-      );
-
-      const attachBtn = el("button", {
-        class:"btn2 ghost2",
-        onclick:()=> openChecklistAttach(db, cl, it, uid, ()=>{ rerender(); })
-      }, "첨부 보기/추가");
-
-      const box = el("div", { class:"boardRow2" },
-        el("div", { style:"display:flex;gap:10px;align-items:flex-start;" }, chk, txt),
-        meta,
-        el("div", { style:"display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;" }, attachBtn)
-      );
-
-      list.appendChild(box);
-    });
-  }
-
-  const submitBtn = el("button", {
-    class:"btn2 primary2",
-    onclick:()=>{
-      if (cl.status !== "draft" && cl.status !== "rejected") return toast("작성중/반려 상태에서만 제출 가능합니다.");
-      cl.status = "submitted";
-      cl.submittedAt = nowISO();
-      cl.updatedAt = nowISO();
-      saveDB(db);
-      toast("제출 완료");
-      render();
-    }
-  }, "제출");
-
-  const toDraftBtn = el("button", {
-    class:"btn2 ghost2",
-    onclick:()=>{
-      if (cl.status !== "rejected") return toast("반려 상태에서만 재작성 가능합니다.");
-      cl.status = "draft";
-      cl.rejectReason = "";
-      cl.decidedBy = "";
-      cl.decidedAt = "";
-      cl.updatedAt = nowISO();
-      saveDB(db);
-      toast("작성중으로 전환");
-      render();
-    }
-  }, "재작성");
-
-  const approveBtn = el("button", {
-    class:"btn2 primary2",
-    onclick:()=>{
-      if (!isManagerPlus) return toast("승인은 팀장 이상만 가능합니다.");
-      if (cl.status !== "submitted") return toast("제출 상태에서만 승인 가능합니다.");
-      checklistApprove(db, cl, uid);
-      saveDB(db);
-      toast("승인 완료");
-      render();
-    }
-  }, "승인");
-
-  const rejectBtn = el("button", {
-    class:"btn2 ghost2",
-    onclick:()=>{
-      if (!isManagerPlus) return toast("반려는 팀장 이상만 가능합니다.");
-      if (cl.status !== "submitted") return toast("제출 상태에서만 반려 가능합니다.");
-      openChecklistRejectModal(db, cl, uid, ()=>{
-        saveDB(db);
-        toast("반려 처리");
-        render();
-      });
-    }
-  }, "반려");
-
-  const btnBar = el("div", { style:"display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap;" },
-    (cl.status==="rejected" ? toDraftBtn : null),
-    ((cl.status==="draft" || cl.status==="rejected") ? submitBtn : null),
-    (isManagerPlus ? rejectBtn : null),
-    (isManagerPlus ? approveBtn : null)
-  );
-
-  const body = el("div", {}, head, list, btnBar);
-  rerender();
-  modalOpen(cl.title || "체크리스트", body);
-}
-
-function checklistApprove(db, cl, uid){
-  cl.status = "approved";
-  cl.decidedBy = uid;
-  cl.decidedAt = nowISO();
-  cl.updatedAt = nowISO();
-
-  // 감사/추적 로그(선택)
-  db.checklistApprovals.unshift({
-    appId: uuid(),
-    clId: cl.clId,
-    teamCode: cl.teamCode,
-    projectId: cl.projectId,
-    decidedBy: uid,
-    decidedAt: nowISO(),
-    result: "approved",
-    reason: ""
-  });
-}
-
-function openChecklistRejectModal(db, cl, uid, onDone){
-  const reasonIn = el("textarea", { class:"ta2", placeholder:"반려 사유 입력(필수)" });
-
-  const okBtn = el("button", { class:"btn2 primary2", onclick:()=>{
-    const r = (reasonIn.value||"").trim();
-    if (!r) return toast("반려 사유를 입력하세요.");
-
-    cl.status = "rejected";
-    cl.rejectReason = r;
-    cl.decidedBy = uid;
-    cl.decidedAt = nowISO();
-    cl.updatedAt = nowISO();
-
-    db.checklistApprovals.unshift({
-      appId: uuid(),
-      clId: cl.clId,
-      teamCode: cl.teamCode,
-      projectId: cl.projectId,
-      decidedBy: uid,
-      decidedAt: nowISO(),
-      result: "rejected",
-      reason: r
-    });
-
-    modalClose();
-    onDone && onDone();
-  }}, "반려 확정");
-
-  const body = el("div", {},
-    el("div", { class:"muted2", style:"font-weight:900;line-height:1.5;padding-bottom:10px;" },
-      `대상: ${cl.title||"-"}\n프로젝트: ${projLabel(db, cl.projectId)}`
-    ),
-    reasonIn,
-    el("div", { style:"display:flex;justify-content:flex-end;gap:8px;margin-top:12px;" }, okBtn)
-  );
-
-  modalOpen("반려 처리", body);
-}
-
-// 첨부(로컬 저장 - 작은 파일만 권장)
-function openChecklistAttach(db, cl, item, uid, onUpdated){
-  const host = el("div", {});
-
-  const list = el("div", { class:"boardList2" });
-
-  function rerender(){
-    list.innerHTML = "";
-    const arr = item.attachments || (item.attachments = []);
-    if (!arr.length){
-      list.appendChild(el("div", { style:"padding:10px;color:var(--muted);font-weight:900;" }, "첨부가 없습니다."));
-      return;
-    }
-    arr.forEach((a, idx)=>{
-      const meta = `${a.name||"-"} · ${a.createdAt||"-"} · ${a.by||"-"}`;
-      const dlBtn = el("button", { class:"btn2 primary2", onclick:()=>{
-        if (!a.dataUrl) return toast("파일 데이터가 없습니다.");
-        downloadDataUrl(a.name || `attach_${idx+1}`, a.dataUrl);
-      }}, "다운로드");
-
-      list.appendChild(
-        el("div", { class:"boardRow2" },
-          el("div", { class:"boardTitle2" }, a.name || "-"),
-          el("div", { class:"boardMeta2" }, meta),
-          el("div", { style:"display:flex;justify-content:flex-end;gap:8px;" }, dlBtn)
-        )
-      );
-    });
-  }
-
-  const fileIn = el("input", { class:"btn2", type:"file" });
-  const addBtn = el("button", { class:"btn2 primary2", onclick: async ()=>{
-    const f = (fileIn.files||[])[0];
-    if (!f) return toast("파일을 선택하세요.");
-
-    const MAX_STORE_BYTES = 1.2 * 1024 * 1024;
-    if ((f.size||0) > MAX_STORE_BYTES){
-      return toast("파일이 큽니다. (1.2MB 이하 권장)");
-    }
-
-    const dataUrl = await new Promise((resolve)=>{
-      const fr = new FileReader();
-      fr.onload = ()=> resolve(String(fr.result||""));
-      fr.onerror = ()=> resolve("");
-      fr.readAsDataURL(f);
-    });
-
-    if (!dataUrl) return toast("파일 읽기에 실패했습니다.");
-
-    item.attachments = Array.isArray(item.attachments) ? item.attachments : [];
-    item.attachments.unshift({
-      name: f.name,
-      dataUrl,
-      createdAt: nowISO(),
-      by: uid
-    });
-
-    cl.updatedAt = nowISO();
-    saveDB(db);
-    toast("첨부 추가 완료");
-    fileIn.value = "";
-    rerender();
-    onUpdated && onUpdated();
-  }}, "첨부 추가");
-
-  host.appendChild(
-    el("div", { style:"display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;" },
-      fileIn, addBtn
-    )
-  );
-  host.appendChild(list);
-
-  rerender();
-  modalOpen("첨부", host);
-}
-
 
 /* =========================
  * (A) 납품 프로젝트 관리 (열람/다운로드 + 권한요청/승인)
@@ -4909,12 +4266,6 @@ function renderView(db){
   if (key === "finish-checklist-list") return viewChecklistList(db, "마감팀");
   if (key === "finish-estimate-write") return viewBoard(db, "finish-estimate-write", "마감팀 · 견적조건 작성");
   if (key === "finish-estimate-manage") return viewBoard(db, "finish-estimate-manage", "마감팀 · 견적조건 관리");
-
-  // render() 내부 라우팅 분기(기존 패턴에 맞춰 추가)
-if (key === "work-check-struct") { viewChecklistTeam(db, "struct_bim"); return; }
-if (key === "work-check-civil")  { viewChecklistTeam(db, "civil_land"); return; }
-if (key === "work-check-finish") { viewChecklistTeam(db, "finish"); return; }
-
 
   // fallback
   viewHome(db);
