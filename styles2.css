@@ -1247,27 +1247,39 @@ body, .layout2, .view2, .card2{
 
 
 /* =========================
-   ✅ Sidebar Header Logo (app2.html: .logo4 / .logoImg4)
+   Sidebar Logo (logo4.png)
 ========================= */
+
 .logo4{
   display:flex;
   align-items:center;
-  justify-content:center;
-  padding: 10px 6px 6px;
-  margin-bottom: 8px;
+  justify-content:flex-start;
+
+  padding: 6px 6px 10px;
+  margin-bottom: 6px;
+
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .logoImg4{
-  height: 56px;          /* ✅ 여기만 조절: 44~72 추천 */
+  display:block;
+
+  height: 42px;          /* ✅ 기본 높이 (여기만 조절하면 됨) */
   width: auto;
   max-width: 100%;
-  display:block;
+
   object-fit: contain;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.10));
+  background: transparent;
+
+  filter: none;          /* drop-shadow 제거 */
 }
 
 /* 모바일에서는 조금 더 작게 */
 @media (max-width: 520px){
-  .logoImg4{ height: 44px; }
+  .logoImg4{
+    height: 34px;
+  }
 }
 
