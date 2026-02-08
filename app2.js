@@ -433,6 +433,17 @@ function computeProjectTotalHours(db, projectId){
   return totalHours;
 }
 
+  function kpiCard(title, value, sub){
+  return el("div", {
+    class: "card2",
+    style: "padding:12px 14px; display:flex; flex-direction:column; gap:6px;"
+  },
+    el("div", { style:"font-size:12px; font-weight:1000; color:var(--muted);" }, title),
+    el("div", { style:"font-size:26px; font-weight:1200; letter-spacing:-0.4px;" }, String(value ?? 0)),
+    el("div", { style:"font-size:12px; font-weight:900; color:var(--muted);" }, sub || "\u00A0")
+  );
+}
+
 
   /***********************
    * Home (대시보드)
