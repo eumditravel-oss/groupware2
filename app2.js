@@ -2138,29 +2138,31 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
   }
 
   function boot(){
-  // ✅ 모달을 body 직속으로 강제 이동 (stacking context 문제 원천 차단)
-  const modal = $("#modal2");
-  if (modal && modal.parentElement !== document.body){
-    document.body.appendChild(modal);
+    // ✅ 모달을 body 직속으로 강제 이동 (stacking context 문제 원천 차단)
+    const modal = $("#modal2");
+    if (modal && modal.parentElement !== document.body){
+      document.body.appendChild(modal);
+    }
+
+    $("#btnClose")?.addEventListener("click", ()=>{
+      if (window.opener) window.close();
+      else location.href = "./index.html";
+    });
+
+    $("#modal2Close")?.addEventListener("click", modalClose);
+    $("#modal2")?.addEventListener("click", (e)=>{
+      if (e.target === $("#modal2")) modalClose();
+    });
+
+    window.addEventListener("hashchange", render);
+
+    if (!location.hash) setHash("home");
+    render();
   }
 
-  $("#btnClose")?.addEventListener("click", ()=>{
-    if (window.opener) window.close();
-    else location.href = "./index.html";
-  });
+  document.addEventListener("DOMContentLoaded", boot);
+})();
 
-  $("#modal2Close")?.addEventListener("click", modalClose);
-  $("#modal2")?.addEventListener("click", (e)=>{
-    if (e.target === $("#modal2")) modalClose();
-  });
-
-  window.addEventListener("hashchange", render);
-
-  if (!location.hash) setHash("home");
-  render();
-}
-
-document.addEventListener("DOMContentLoaded", boot);
 
 
 
