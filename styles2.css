@@ -23,7 +23,7 @@ body{
 .layout2{
   max-width: 1280px;
   margin: 0 auto;
-  padding: 5px 0px 24px;
+  padding: 7px 0px 24px;
   display:grid;
   grid-template-columns: 280px 1fr;
   gap: 16px;
@@ -1290,7 +1290,7 @@ body, .layout2, .view2, .card2{
   justify-content:flex-start;
 
   padding: 0 6px;        /* 좌우만 약간 */
-  margin: 0 0 4px 0;     /* ✅ 로고-메뉴 간격 (여기만 조절) */
+  margin: 0 0 5px 0;     /* ✅ 로고-메뉴 간격 (여기만 조절) */
 }
 
 .logoImg5{
