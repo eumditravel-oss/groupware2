@@ -25,6 +25,40 @@
   function isLeaderPlus(user){ return roleRank(user?.role || "staff") >= roleRank("leader"); }
 
   /***********************
+ * Approval Flow (사원 → 팀장 → 실장)
+ ***********************/
+const APPROVAL_CHAIN = ["leader", "manager"]; // team장, 실장
+
+function initialApprovalStepForWriterRole(writerRole){
+  // 작성자 직급에 따라 "다음 결재자"를 반환
+  const r = writerRole || "staff";
+
+  if (r === "staff") return "leader";
+  if (r === "leader") return "manager";
+
+  // 실장 이상이 작성한 건은 즉시 승인 처리(원하면 director로 확장 가능)
+  return null;
+}
+
+function isFinalStep(step){
+  return step === APPROVAL_CHAIN[APPROVAL_CHAIN.length - 1];
+}
+
+function nextStep(step){
+  const i = APPROVAL_CHAIN.indexOf(step);
+  if (i < 0) return null;
+  return APPROVAL_CHAIN[i + 1] || null;
+}
+
+function ensureApprovalShape(log){
+  if (!log) return log;
+  if (typeof log.approvalStep !== "string") log.approvalStep = "";
+  if (!Array.isArray(log.approvalHistory)) log.approvalHistory = [];
+  return log;
+}
+
+
+  /***********************
    * Storage (메인과 동일)
    ***********************/
   const LS_KEY  = "CONCOST_GROUPWARE_DB_V05";
@@ -1368,10 +1402,17 @@ function viewProjectEditor(db){
           l.hours     = Number(e.hours)||0;
 
           // ✅ 반려건 수정 저장 시: 재제출 처리
-          l.status = "submitted";
-          l.submittedAt = submittedAt;
-          l.approvedBy = ""; l.approvedAt = "";
-          l.rejectedBy = ""; l.rejectedAt = ""; l.rejectReason = "";
+          // ✅ 수정 저장 = 다시 결재 라인 태움
+l.status = "submitted";
+l.submittedAt = submittedAt;
+
+l.approvedBy = ""; l.approvedAt = "";
+l.rejectedBy = ""; l.rejectedAt = ""; l.rejectReason = "";
+
+const firstStep = initialApprovalStepForWriterRole(me?.role || "staff");
+l.approvalStep = firstStep || ""; // 실장 이상이면 "" (즉시승인 로직은 아래에서 처리)
+l.approvalHistory = []; // 재상신이므로 결재이력 초기화(원하면 유지로 변경 가능)
+
         }
 
         // 추가된 항목: 새 로그 생성
@@ -1408,25 +1449,33 @@ function viewProjectEditor(db){
       // ✅ 새 작성 모드: 기존과 동일하게 push
       // -------------------------
       const submittedAt = nowISO();
-      for (const e of entries){
-        db.logs.push({
-          logId: uuid(),
-          date,
-          projectId: e.projectId,
-          category: e.category,
-          process: e.process,
-          content: e.content.trim(),
-          hours: Number(e.hours)||0,
-          writerId: uid,
-          status: "submitted",
-          submittedAt,
-          approvedBy: "",
-          approvedAt: "",
-          rejectedBy: "",
-          rejectedAt: "",
-          rejectReason: ""
-        });
-      }
+const firstStep = initialApprovalStepForWriterRole(me?.role || "staff");
+
+for (const e of entries){
+  db.logs.push({
+    logId: uuid(),
+    date,
+    projectId: e.projectId,
+    category: e.category,
+    process: e.process,
+    content: e.content.trim(),
+    hours: Number(e.hours)||0,
+    writerId: uid,
+
+    status: firstStep ? "submitted" : "approved",
+    submittedAt,
+    approvedBy: firstStep ? "" : uid,
+    approvedAt: firstStep ? "" : submittedAt,
+
+    rejectedBy: "",
+    rejectedAt: "",
+    rejectReason: "",
+
+    approvalStep: firstStep || "",
+    approvalHistory: []
+  });
+}
+
 
       saveDB(db);
       toast("업무일지 제출 완료 (승인 대기)");
@@ -1483,8 +1532,14 @@ function viewProjectEditor(db){
     setRouteTitle("업무관리 · 업무일지 승인");
 
     const uid = getUserId(db);
-    const submitted = (db.logs||[]).filter(l => l.status === "submitted")
-      .sort((a,b)=>(a.submittedAt||"").localeCompare(b.submittedAt||""));
+    const me = userById(db, uid);
+const myRole = me?.role || "staff";
+
+const submitted = (db.logs||[])
+  .map(ensureApprovalShape)
+  .filter(l => l.status === "submitted" && (l.approvalStep || "") === myRole)
+  .sort((a,b)=>(a.submittedAt||"").localeCompare(b.submittedAt||""));
+
 
     const groups = new Map();
     for (const l of submitted){
@@ -1507,11 +1562,27 @@ function viewProjectEditor(db){
         onclick:()=>{
           if (!confirm(`${writer?.name||"작성자"} · ${date} (${arr.length}건) 승인할까요?`)) return;
           const t = nowISO();
-          for (const l of arr){
-            l.status = "approved";
-            l.approvedBy = uid;
-            l.approvedAt = t;
-          }
+for (const l of arr){
+  ensureApprovalShape(l);
+
+  // 결재 이력 저장
+  l.approvalHistory.push({ by: uid, role: myRole, at: t });
+
+  if (isFinalStep(l.approvalStep)){
+    // ✅ 실장(최종) 승인
+    l.status = "approved";
+    l.approvedBy = uid;
+    l.approvedAt = t;
+    l.approvalStep = "";          // 반려 상태에서는 결재대기 없음
+l.approvalHistory = l.approvalHistory || [];
+
+  } else {
+    // ✅ 팀장(중간) 승인 → 다음 결재자에게 넘김
+    l.approvalStep = nextStep(l.approvalStep) || "";
+    // 상태는 계속 submitted 유지 (다음 결재 대기)
+  }
+}
+
           saveDB(db);
           toast("승인 완료");
           render();
