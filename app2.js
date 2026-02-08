@@ -438,29 +438,64 @@ function computeProjectTotalHours(db, projectId){
    * Home (대시보드)
    ***********************/
   function computeKpis(db){
-    const today = todayISO();
-    const logs = Array.isArray(db.logs) ? db.logs : [];
-    const approvalsWait = logs.filter(l => l.status === "submitted").length;
+  const logs = Array.isArray(db.logs) ? db.logs : [];
+  const projects = Array.isArray(db.projects) ? db.projects : [];
 
-    const todayMy = logs.filter(l => l.date === today).length;
-    const inProgress = logs.filter(l => (l.status === "submitted" || l.status === "approved")).length;
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth(); // 0-base
 
-    const unread = Array.isArray(db.messages) ? db.messages.filter(m => m.read !== true).length : 0;
+  const monthStart = new Date(y, m, 1);
+  const monthEnd   = new Date(y, m + 1, 0);
 
-    const progressRate = inProgress ? Math.round((logs.filter(l=>l.status==="approved").length / inProgress) * 100) : 0;
+  const isSameMonth = (d)=>{
+    if (!d) return false;
+    const x = new Date(d);
+    return x >= monthStart && x <= monthEnd;
+  };
 
-    return { todayMy, inProgress, unread, approvalsWait, progressRate };
-  }
+  // 1️⃣ 승인 대기 업무일지
+  const approvalsWait = logs.filter(l => l.status === "submitted").length;
 
-  function kpiCard(label, value, badgeText){
-    return el("div", { class:"kpi" },
-      el("div", { class:"kpi-top" },
-        el("div", { class:"kpi-label" }, label),
-        badgeText ? el("div", { class:"kpi-badge" }, badgeText) : el("div")
-      ),
-      el("div", { class:"kpi-value" }, String(value))
-    );
-  }
+  // 2️⃣ 이번 달 업무가 있는 프로젝트
+  const monthProjectIds = new Set(
+    logs
+      .filter(l => isSameMonth(l.date))
+      .map(l => l.projectId)
+  );
+
+  // 3️⃣ 진행중 / 완료 프로젝트
+  let inProgressProjects = 0;
+  let doneProjects = 0;
+
+  monthProjectIds.forEach(pid=>{
+    const p = projects.find(x => x.projectId === pid);
+    if (!p || !p.endDate) {
+      inProgressProjects++;
+      return;
+    }
+    const end = new Date(p.endDate);
+    if (end < today) doneProjects++;
+    else inProgressProjects++;
+  });
+
+  // 4️⃣ 다가오는 납품일 (7일 이내)
+  const UPCOMING_DAYS = 7;
+  const upcoming = projects.filter(p=>{
+    if (!p.endDate) return false;
+    const end = new Date(p.endDate);
+    const diff = (end - today) / (1000*60*60*24);
+    return diff >= 0 && diff <= UPCOMING_DAYS;
+  }).length;
+
+  return {
+    approvalsWait,
+    inProgressProjects,
+    doneProjects,
+    upcoming
+  };
+}
+
 
   function viewHome(db){
     const view = $("#view2");
@@ -469,12 +504,13 @@ function computeProjectTotalHours(db, projectId){
 
     const k = computeKpis(db);
 
-    const kpiGrid = el("div", { class:"kpiGrid" },
-      kpiCard("오늘 업무일지", k.todayMy, ""),
-      kpiCard("진행 중 업무", k.inProgress, `${k.progressRate}%`),
-      kpiCard("미확인 메시지", k.unread, ""),
-      kpiCard("대기 결재", k.approvalsWait, "")
-    );
+const kpiGrid = el("div", { class:"kpiGrid" },
+  kpiCard("승인대기 업무일지", k.approvalsWait, ""),
+  kpiCard("이 달 진행중 프로젝트", k.inProgressProjects, ""),
+  kpiCard("이 달 진행완료 프로젝트", k.doneProjects, ""),
+  kpiCard("다가오는 납품일정", k.upcoming, "7일 이내")
+);
+
 
     const files = Array.isArray(db.sharedFiles) ? db.sharedFiles : [];
     const filesTable = el("div", { class:"card2", style:"padding:0;" },
