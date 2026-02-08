@@ -633,10 +633,13 @@ function computeProjectTotalHours(db, projectId){
   /***********************
    * 카드 1: 배정받은 현재 프로젝트 관리(PM)
    ***********************/
+  const myRole = me?.role || "staff";
+
+  /* PM 프로젝트 */
   const myPMProjects = (db.projectPM || [])
-  .filter(r => Object.values(r.parts || {}).includes(myRole)) // ✅ uid → myRole
-  .map(r => projById(db, r.projectId))
-  .filter(Boolean);
+    .filter(r => Object.values(r.parts || {}).includes(myRole))
+    .map(r => projById(db, r.projectId))
+    .filter(Boolean);
 
 
   const pmList = myPMProjects.length
