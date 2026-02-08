@@ -1247,9 +1247,9 @@ body, .layout2, .view2, .card2{
 
 
 /* =========================
-   ✅ Sidebar Header Logo (app2.html: .logo3 / .logoImg3)
+   ✅ Sidebar Header Logo (app2.html: .logo4 / .logoImg4)
 ========================= */
-.logo3{
+.logo4{
   display:flex;
   align-items:center;
   justify-content:center;
@@ -1257,7 +1257,7 @@ body, .layout2, .view2, .card2{
   margin-bottom: 8px;
 }
 
-.logoImg3{
+.logoImg4{
   height: 56px;          /* ✅ 여기만 조절: 44~72 추천 */
   width: auto;
   max-width: 100%;
@@ -1268,6 +1268,6 @@ body, .layout2, .view2, .card2{
 
 /* 모바일에서는 조금 더 작게 */
 @media (max-width: 520px){
-  .logoImg3{ height: 44px; }
+  .logoImg4{ height: 44px; }
 }
 
