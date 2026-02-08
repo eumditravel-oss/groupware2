@@ -192,18 +192,7 @@
 }
 
 
-  function modalOpen(title, bodyNode){
-  $("#modal2Title").textContent = title || "";
-  const body = $("#modal2Body");
-  body.innerHTML = "";
-  if (bodyNode) body.appendChild(bodyNode);
-
-  // ✅ 모달 열릴 때: 달력 오버레이 숨김(겹침 방지)
-  document.body.classList.add("modalOpen2");
-
-  $("#modal2").classList.remove("hidden");
-}
-function modalClose(){
+  function modalClose(){
   $("#modal2").classList.add("hidden");
 
   // ✅ 모달 닫힐 때: 오버레이 복원
@@ -2170,6 +2159,9 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
   if (!location.hash) setHash("home");
   render();
 }
+
+document.addEventListener("DOMContentLoaded", boot);
+
 
 
     $("#btnClose")?.addEventListener("click", ()=>{
