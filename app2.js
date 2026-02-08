@@ -1094,136 +1094,95 @@ function viewPMAssign(db){
    * Popup window picker (새 창)
    ***********************/
   function openPickerWindow({ title, items, placeholder, onPick }){
-    const w = 560, h = 640;
-    const left = Math.max(0, Math.floor((window.screenX || 0) + ((window.outerWidth || 1200) - w)/2));
-    const top  = Math.max(0, Math.floor((window.screenY || 0) + ((window.outerHeight || 800) - h)/2));
+  const w = 560, h = 640;
+  const left = Math.max(0, Math.floor((window.screenX || 0) + ((window.outerWidth || 1200) - w)/2));
+  const top  = Math.max(0, Math.floor((window.screenY || 0) + ((window.outerHeight || 800) - h)/2));
 
-    // items: [{ value, label, sub? }]
-    const payload = { title, items, placeholder };
+  const payload = { title, items, placeholder };
 
-    const html = `
-<!doctype html>
+  const html = `<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>${escapeHtml(title||"선택")}</title>
-<style>
-  :root{
-    --bg:#f4f6f9; --paper:#fff; --ink:#1d1d1f; --muted:#6b6b73; --line:rgba(0,0,0,.10);
-    --radius:14px;
-  }
-  *{ box-sizing:border-box; }
-  body{ margin:0; font-family: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",Arial; background:var(--bg); color:var(--ink); }
-  .wrap{ padding:14px; }
-  .card{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:12px; }
-  .head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
-  .title{ font-weight:1000; font-size:16px; }
-  .hint{ color:var(--muted); font-size:12px; font-weight:900; margin-top:4px; }
-  .close{ border:1px solid var(--line); background:#fff; border-radius:12px; padding:8px 10px; font-weight:900; cursor:pointer; }
-  .search{ width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-weight:900; outline:none; }
-  .list{ margin-top:10px; display:flex; flex-direction:column; gap:8px; max-height:520px; overflow:auto; padding-right:2px; }
-  .item{ text-align:left; border:1px solid var(--line); background:#fff; border-radius:12px; padding:10px 12px; cursor:pointer; }
-  .item:hover{ outline:2px solid rgba(240,138,36,.22); }
-  .label{ font-weight:1100; }
-  .sub{ margin-top:4px; color:var(--muted); font-size:12px; font-weight:900; }
-  .empty{ color:var(--muted); font-weight:900; padding:10px 0; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${payload.title || "선택"}</title>
+  <style>
+    body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR"; background:#f4f6f9; }
+    .wrap{ padding:16px; }
+    h1{ margin:0 0 8px; font-size:18px; }
+    input{ width:100%; padding:10px; border-radius:10px; border:1px solid #ddd; margin-bottom:10px; }
+    ul{ list-style:none; padding:0; margin:0; max-height:460px; overflow:auto; }
+    li{ padding:10px; border-radius:10px; cursor:pointer; }
+    li:hover{ background:#eee; }
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <div class="head">
-        <div>
-          <div class="title" id="t"></div>
-          <div class="hint">검색 후 항목을 클릭하면 자동으로 창이 닫히며 값이 입력됩니다.</div>
-        </div>
-        <button class="close" id="btnClose">닫기</button>
-      </div>
-
-      <input class="search" id="q" placeholder="" />
-
-      <div class="list" id="list"></div>
-    </div>
+    <h1>${payload.title || ""}</h1>
+    <input id="q" placeholder="${payload.placeholder || ""}" />
+    <ul id="list"></ul>
   </div>
 
-<script>
-  const payload = ${JSON.stringify(payload)};
-  document.getElementById("t").textContent = payload.title || "선택";
-  const q = document.getElementById("q");
-  q.placeholder = payload.placeholder || "검색...";
-  const list = document.getElementById("list");
-  const items = (payload.items || []);
+  <script>
+    const items = ${JSON.stringify(payload.items || [])};
+    const list = document.getElementById("list");
+    const q = document.getElementById("q");
 
-  function render(){
-    const term = (q.value || "").trim().toLowerCase();
-    list.innerHTML = "";
-    const filtered = !term ? items : items.filter(x => (x.label||"").toLowerCase().includes(term));
-    if (!filtered.length){
-      const d = document.createElement("div");
-      d.className = "empty";
-      d.textContent = "검색 결과 없음";
-      list.appendChild(d);
-      return;
-    }
-    filtered.forEach(x=>{
-      const b = document.createElement("button");
-      b.type="button";
-      b.className = "item";
-
-      const l = document.createElement("div");
-      l.className = "label";
-      l.textContent = x.label || "-";
-
-      b.appendChild(l);
-
-      if (x.sub){
-        const s = document.createElement("div");
-        s.className = "sub";
-        s.textContent = x.sub;
-        b.appendChild(s);
-      }
-
-      b.addEventListener("click", ()=>{
-        try{
-          if (window.opener){
+    function render(){
+      const v = q.value.toLowerCase();
+      list.innerHTML = "";
+      items
+        .filter(x => (x.label || "").toLowerCase().includes(v))
+        .forEach(x => {
+          const li = document.createElement("li");
+          li.textContent = x.label;
+          li.onclick = () => {
             window.opener.postMessage({ type:"APP2_PICK", value:x.value, label:x.label }, "*");
-          }
-        }catch(e){}
-        window.close();
-      });
-
-      list.appendChild(b);
-    });
-  }
-
-  q.addEventListener("input", render);
-  document.getElementById("btnClose").addEventListener("click", ()=> window.close());
-
-  render();
-  setTimeout(()=> q.focus(), 50);
-</script>
+            window.close();
+          };
+          list.appendChild(li);
+        });
+    }
+    q.addEventListener("input", render);
+    render();
+  </script>
 </body>
 </html>`;
 
-    const url = "data:text/html;charset=utf-8," + encodeURIComponent(html);
-    const win = window.open(
-      url,
-      "APP2_PICKER",
-      `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
-    if (!win) {
-      toast("팝업이 차단되었습니다. 브라우저에서 팝업 허용 후 다시 시도하세요.");
-      return;
-    }
+  // ✅ 핵심 수정: data URL → blob URL
+  const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
 
-    const handler = (ev)=>{
-      if (!ev?.data || ev.data.type !== "APP2_PICK") return;
-      window.removeEventListener("message", handler);
-      onPick?.(ev.data.value, ev.data.label);
-    };
-    window.addEventListener("message", handler);
+  const win = window.open(
+    url,
+    "APP2_PICKER",
+    `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  );
+
+  if (!win){
+    URL.revokeObjectURL(url);
+    toast("팝업이 차단되었습니다.");
+    return;
   }
+
+  const handler = (ev)=>{
+    if (!ev?.data || ev.data.type !== "APP2_PICK") return;
+    window.removeEventListener("message", handler);
+    URL.revokeObjectURL(url);
+    onPick?.(ev.data.value, ev.data.label);
+  };
+  window.addEventListener("message", handler);
+
+  // 창을 그냥 닫았을 때도 URL 정리
+  const timer = setInterval(()=>{
+    if (win.closed){
+      clearInterval(timer);
+      window.removeEventListener("message", handler);
+      URL.revokeObjectURL(url);
+    }
+  }, 400);
+}
+
 
   function escapeHtml(s){
     return String(s||"")
