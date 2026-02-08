@@ -1247,10 +1247,10 @@ body, .layout2, .view2, .card2{
 
 
 /* =========================
-   Sidebar Logo (logo4.png)
+   Sidebar Logo (logo5.png)
 ========================= */
 
-.logo4{
+.logo5{
   display:flex;
   align-items:center;
   justify-content:flex-start;
@@ -1263,7 +1263,7 @@ body, .layout2, .view2, .card2{
   box-shadow: none;
 }
 
-.logoImg4{
+.logoImg5{
   display:block;
 
   height: 42px;          /* ✅ 기본 높이 (여기만 조절하면 됨) */
@@ -1278,7 +1278,7 @@ body, .layout2, .view2, .card2{
 
 /* 모바일에서는 조금 더 작게 */
 @media (max-width: 520px){
-  .logoImg4{
+  .logoImg5{
     height: 34px;
   }
 }
