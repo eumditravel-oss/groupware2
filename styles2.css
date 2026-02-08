@@ -1244,3 +1244,30 @@ body{
 body, .layout2, .view2, .card2{
   background-image: none !important;
 }
+
+
+/* =========================
+   ✅ Sidebar Header Logo (app2.html: .logo3 / .logoImg3)
+========================= */
+.logo3{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 10px 6px 6px;
+  margin-bottom: 8px;
+}
+
+.logoImg3{
+  height: 56px;          /* ✅ 여기만 조절: 44~72 추천 */
+  width: auto;
+  max-width: 100%;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.10));
+}
+
+/* 모바일에서는 조금 더 작게 */
+@media (max-width: 520px){
+  .logoImg3{ height: 44px; }
+}
+
