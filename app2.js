@@ -281,11 +281,8 @@ const MENU = [
   { key:"work-schedule", label:"종합 공정관리", type:"route" },
 
   { key:"work-delivery", label:"납품 프로젝트 관리", type:"route" },
-  { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" }, // ✅ 콤마 필수
-
-  { key:"work-check-struct", label:"프로젝트 체크리스트(구조·BIM)", type:"route" },
-  { key:"work-check-civil",  label:"프로젝트 체크리스트(토목·조경)", type:"route" },
-  { key:"work-check-finish", label:"프로젝트 체크리스트(마감)", type:"route" },
+  { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" } // ✅ 콤마 필수
+  
 ]
 
 },
@@ -306,8 +303,8 @@ const MENU = [
     label: "구조ㆍBIM팀",
     kind: "group",
     items: [
-      { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
-      { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
+      { key:"work-check-struct", label:"프로젝트 체크리스트(구조·BIM)", type:"route" },
+            { key:"struct-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"struct-estimate-write", label:"견적조건 작성", type:"board" },
       { key:"struct-estimate-manage", label:"견적조건 관리", type:"board" },
       { key:"struct-fin", label:"철골ㆍ철콘산출(FIN)", type:"link", url:"https://eumditravel-oss.github.io/FIN2/" }
@@ -319,7 +316,7 @@ const MENU = [
     label: "토목ㆍ조경팀",
     kind: "group",
     items: [
-      { key:"civil-checklist", label:"프로젝트별 체크리스트", type:"route" },
+      { key:"work-check-civil",  label:"프로젝트 체크리스트(토목·조경)", type:"route" },
       { key:"civil-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"civil-estimate-write", label:"견적조건 작성", type:"board" },
       { key:"civil-estimate-manage", label:"견적조건 관리", type:"board" }
@@ -330,7 +327,7 @@ const MENU = [
     label: "마감팀",
     kind: "group",
     items: [
-      { key:"finish-checklist", label:"프로젝트별 체크리스트", type:"route" },
+      { key:"work-check-finish", label:"프로젝트 체크리스트(마감)", type:"route" },
       { key:"finish-checklist-list", label:"체크리스트 목록", type:"route" },
       { key:"finish-estimate-write", label:"견적조건 작성", type:"board" },
       { key:"finish-estimate-manage", label:"견적조건 관리", type:"board" }
