@@ -2144,27 +2144,7 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
       document.body.appendChild(modal);
     }
 
-    $("#btnClose")?.addEventListener("click", ()=>{
-      if (window.opener) window.close();
-      else location.href = "./index.html";
-    });
-
-    $("#modal2Close")?.addEventListener("click", modalClose);
-    $("#modal2")?.addEventListener("click", (e)=>{
-      if (e.target === $("#modal2")) modalClose();
-    });
-
-    window.addEventListener("hashchange", render);
-
-    if (!location.hash) setHash("home");
-    render();
-  }
-
-  document.addEventListener("DOMContentLoaded", boot);
-})();
-
-
-
+    
 
     $("#btnClose")?.addEventListener("click", ()=>{
       if (window.opener) window.close();
