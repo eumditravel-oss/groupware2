@@ -1131,3 +1131,61 @@ body.modalOpen2 .calOverlay2{
   display: none !important;
 }
 
+
+/* =========================
+   MODAL: 항상 최상단
+========================= */
+#modal2{
+  position: fixed;
+  inset: 0;
+  z-index: 50000; /* 충분히 크게 */
+}
+
+/* =========================
+   MODAL OPEN: 배경 디밍(반투명)
+========================= */
+body.modalOpen2 .calCard2,
+body.modalOpen2 .calWrap2,
+body.modalOpen2 .calGrid2,
+body.modalOpen2 .calOverlay2{
+  opacity: .28;
+}
+
+/* 모달 열렸을 때 배경 클릭/스크롤 방지 */
+body.modalOpen2{
+  overflow: hidden;
+}
+body.modalOpen2 .calGrid2,
+body.modalOpen2 .calOverlay2{
+  pointer-events: none; /* 배경 클릭 방지 */
+}
+
+/* =========================
+   CAL CELL: 날짜 최상단 고정
+========================= */
+.calCell2{
+  position: relative;
+  padding-top: 34px; /* 상단 날짜 영역 공간 확보 */
+}
+
+/* 날짜/카운트 영역을 셀 상단에 고정 */
+.calDayTop2{
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  z-index: 3;
+  pointer-events: none; /* 날짜영역 때문에 클릭 방해 방지 */
+}
+
+/* 카운트가 오른쪽 위에 깔끔히 */
+.calCount2{
+  position: absolute;
+  top: 6px;
+  right: 8px;
+}
+
+/* 리본들은 날짜영역 아래부터 시작 */
+.calRibbons2{
+  margin-top: 0;
+}
