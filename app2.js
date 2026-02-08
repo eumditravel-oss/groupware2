@@ -1093,11 +1093,210 @@ function viewProjectEditor(db){
     onclick:()=>{ entries.push(makeEmptyEntry(db)); rerenderEntries(); }
   }, "+ 업무 항목 추가");
 
+    function openMyLogCalendar(){
+  // ✅ 내가 작성한 로그(approved 제외하고 표시할지 여부는 아래에서 결정)
+  const logs = (db.logs||[]).filter(l => l.writerId === uid);
+
+  // 날짜별 그룹
+  const map = new Map(); // date -> logs[]
+  for (const l of logs){
+    if (!l.date) continue;
+    if (!map.has(l.date)) map.set(l.date, []);
+    map.get(l.date).push(l);
+  }
+
+  // ✅ 표시할 날짜 조건:
+  // - 달력에는 "내가 작성한 날짜"는 모두 표시
+  // - 단, 클릭 시 approved 포함이면 편집 불가 안내
+  const allDates = Array.from(map.keys()).sort(); // YYYY-MM-DD
+
+  if (!allDates.length){
+    toast("작성된 업무일지가 없습니다.");
+    return;
+  }
+
+  // 기본 월: 가장 최근 작성일 기준
+  const last = allDates[allDates.length - 1];
+  const m = last.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  let year  = m ? Number(m[1]) : new Date().getFullYear();
+  let month = m ? Number(m[2]) : (new Date().getMonth()+1);
+
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function ymd(y,m,d){ return `${y}-${pad2(m)}-${pad2(d)}`; }
+  function parseYMD(s){
+    const mm = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!mm) return null;
+    return { y:Number(mm[1]), mo:Number(mm[2]), d:Number(mm[3]) };
+  }
+  function daysInMonth(y,m){
+    return new Date(y, m, 0).getDate();
+  }
+  function firstDow(y,m){
+    return new Date(y, m-1, 1).getDay(); // 0~6
+  }
+
+  // ✅ 해당 날짜 클릭 시 실제 로드(기존 entries 채우는 로직)
+  function loadDate(date){
+    const list = (map.get(date) || []).slice()
+      .sort((a,b)=> (a.submittedAt||"").localeCompare(b.submittedAt||""));
+
+    if (!list.length){
+      toast("해당 날짜에 작성된 업무일지가 없습니다.");
+      return;
+    }
+
+    // 승인 포함이면 잠금
+    if (list.some(x => x.status === "approved")){
+      toast("승인 완료된 업무일지는 수정할 수 없습니다.");
+      return;
+    }
+
+    // 수정 가능한 것만 (submitted/rejected)
+    const editable = list.filter(x => canEditStatus(x.status));
+    if (!editable.length){
+      toast("수정 가능한 업무일지가 없습니다.");
+      return;
+    }
+
+    const reprStatus = editable[0].status;
+
+    editing = {
+      date,
+      logIds: editable.map(x => x.logId),
+      status: reprStatus
+    };
+
+    entries = editable.map(l => ({
+      projectId: l.projectId,
+      category: l.category || "구조",
+      process: l.process || (PROCESS_MASTER[l.category || "구조"]?.[0] || ""),
+      hours: Number(l.hours || 0) || 1,
+      content: l.content || ""
+    }));
+
+    if (!entries.length) entries = [ makeEmptyEntry(db) ];
+
+    // ✅ 화면 날짜도 해당 날짜로 동기화
+    dateInput.value = date;
+
+    rerenderHeader();
+    rerenderSubmitLabel();
+    rerenderEntries();
+
+    modalClose();
+    toast("업무일지를 불러왔습니다. 수정 후 저장하세요.");
+  }
+
+  // ✅ 달력 UI
+  const wrap = el("div", { style:"display:flex;flex-direction:column;gap:10px;min-width:320px;max-width:520px;" });
+
+  const title = el("div", { style:"font-weight:1100;" }, "내 업무일지 불러오기");
+  const hint  = el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" },
+    "점(•)이 표시된 날짜에 작성된 업무일지가 있습니다. 날짜를 클릭하면 불러옵니다."
+  );
+
+  const header = el("div", { style:"display:flex;align-items:center;justify-content:space-between;gap:8px;" });
+
+  const prevBtn = el("button", { class:"btn2 ghost2" }, "◀");
+  const nextBtn = el("button", { class:"btn2 ghost2" }, "▶");
+  const ymLabel = el("div", { style:"font-weight:1100;" });
+
+  header.appendChild(prevBtn);
+  header.appendChild(ymLabel);
+  header.appendChild(nextBtn);
+
+  const dow = ["일","월","화","수","목","금","토"];
+  const dowRow = el("div", { style:"display:grid;grid-template-columns:repeat(7,1fr);gap:6px;" },
+    ...dow.map(t=> el("div", { style:"text-align:center;color:var(--muted);font-size:12px;font-weight:900;padding:4px 0;" }, t))
+  );
+
+  const grid = el("div", { style:"display:grid;grid-template-columns:repeat(7,1fr);gap:6px;" });
+
+  function renderCal(){
+    ymLabel.textContent = `${year}-${pad2(month)}`;
+    grid.innerHTML = "";
+
+    const start = firstDow(year, month);
+    const dim = daysInMonth(year, month);
+
+    // 앞 빈칸
+    for (let i=0;i<start;i++){
+      grid.appendChild(el("div", { style:"height:44px;" }));
+    }
+
+    for (let d=1; d<=dim; d++){
+      const date = ymd(year, month, d);
+      const dayLogs = map.get(date) || [];
+      const has = dayLogs.length > 0;
+
+      // 상태 요약: approved 존재 여부
+      const hasApproved = has && dayLogs.some(x=>x.status==="approved");
+      const editableCount = has ? dayLogs.filter(x=>canEditStatus(x.status)).length : 0;
+
+      const btn = el("button", {
+        type:"button",
+        class:"btn2",
+        style:[
+          "height:44px; padding:0; border-radius:12px;",
+          "display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;",
+          has ? "font-weight:1100;" : "opacity:.45;",
+          hasApproved ? "border:1px solid rgba(240,138,36,.55);" : ""
+        ].join(" "),
+        onclick:()=>{
+          if (!has) return;
+          loadDate(date);
+        }
+      },
+        el("div", {}, String(d)),
+        has
+          ? el("div", { style:"font-size:11px;line-height:1;color:var(--muted);font-weight:1000;" },
+              hasApproved ? "승인완료" : `• ${editableCount}건`
+            )
+          : el("div", { style:"font-size:11px;line-height:1;color:transparent;" }, ".")
+      );
+
+      grid.appendChild(btn);
+    }
+
+    // 뒷 빈칸(그리드 정렬)
+    const totalCells = start + dim;
+    const tail = (7 - (totalCells % 7)) % 7;
+    for (let i=0;i<tail;i++){
+      grid.appendChild(el("div", { style:"height:44px;" }));
+    }
+  }
+
+  prevBtn.addEventListener("click", ()=>{
+    month--;
+    if (month <= 0){ month = 12; year--; }
+    renderCal();
+  });
+  nextBtn.addEventListener("click", ()=>{
+    month++;
+    if (month >= 13){ month = 1; year++; }
+    renderCal();
+  });
+
+  // (선택) 작성된 연/월만 빠르게 이동하는 드롭다운을 원하면 여기 확장 가능
+
+  wrap.appendChild(title);
+  wrap.appendChild(hint);
+  wrap.appendChild(header);
+  wrap.appendChild(dowRow);
+  wrap.appendChild(grid);
+
+  renderCal();
+
+  modalOpen("기존 업무일지 불러오기", wrap);
+}
+
+
   // ✅ 불러오기/초기화 버튼(수정 UI)
   const loadBtn = el("button", {
-    class:"btn2 ghost2",
-    onclick: loadForEdit
-  }, "기존 불러오기");
+  class:"btn2 ghost2",
+  onclick: openMyLogCalendar
+}, "기존 불러오기");
+
 
   const resetBtn = el("button", {
     class:"btn2 ghost2",
