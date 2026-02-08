@@ -129,6 +129,9 @@ function ensureApprovalShape(log){
  * ========================= */
 function ensureDB(){
   const db = loadDB();
+  seedSampleProjectsIfEmpty(db);
+ensureChecklistStore(db);
+
   if (db && typeof db === "object") {
     if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
     if (!Array.isArray(db.tasks)) db.tasks = [];
@@ -3737,6 +3740,364 @@ function viewDeliveryUpload(db){
       )
     );
   }
+
+
+
+  /********************************
+ * ✅ CHECKLIST (프로젝트별/목록) PATCH
+ ********************************/
+
+function seedSampleProjectsIfEmpty(db){
+  if (Array.isArray(db.projects) && db.projects.length) return;
+
+  db.projects = [];
+  for (let i = 1; i <= 36; i++){
+    const no = String(i).padStart(2, "0");
+    const id = `20250${no}`; // 2025001~2025036
+    db.projects.push({ id, name: `${id} (샘플 프로젝트 ${no})` });
+  }
+}
+
+function ensureChecklistStore(db){
+  if (!Array.isArray(db.checklists)) db.checklists = [];
+}
+
+function uid(prefix="cl"){
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function nowISO(){
+  return new Date().toISOString();
+}
+
+function getProjectOptions(db){
+  seedSampleProjectsIfEmpty(db);
+  return (db.projects || []).map(p => ({ id: p.id, name: p.name || p.id }));
+}
+
+// staff 옵션: db.users가 있으면 staff만, 없으면 현재 로그인 사용자만이라도 표시
+function getStaffOptions(db){
+  const users = Array.isArray(db.users) ? db.users : [];
+  const staff = users
+    .filter(u => (u.role || "").toLowerCase().includes("staff") || (u.position || "").includes("사원") || (u.type || "") === "staff")
+    .map(u => ({
+      id: u.id || u.uid || u.email || u.name,
+      name: u.name || u.displayName || u.id || "staff"
+    }));
+
+  if (staff.length) return staff;
+
+  // fallback (기존 코드에 getUserId/getUserName이 있으면 그걸 쓰고, 없으면 placeholder)
+  let meId = "me";
+  let meName = "작업자A (staff)";
+  try{
+    if (typeof getUserId === "function") meId = getUserId(db) || meId;
+    if (typeof getUserName === "function") meName = getUserName(db) || meName;
+  }catch(e){}
+
+  return [{ id: meId, name: meName }];
+}
+
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+// 공통: 체크리스트 리스트 렌더 (mode = "embedded" | "full")
+function renderChecklistListUI(db, { projectId, mode }){
+  ensureChecklistStore(db);
+
+  const wrap = el("div", { class:"card" });
+  wrap.appendChild(
+    el("div", { class:"card-head", style:"display:flex;align-items:center;justify-content:space-between;gap:12px;" },
+      el("div", { class:"card-title" }, mode === "full" ? "체크리스트 목록(프로젝트별)" : "체크리스트 목록"),
+      el("div", { class:"muted", style:"font-weight:800;" }, mode === "full" ? "" : "Leader+ 관리 화면")
+    )
+  );
+
+  const listHost = el("div", { class:"stack", style:"margin-top:10px;" });
+
+  function rerender(){
+    listHost.innerHTML = "";
+
+    const rows = db.checklists
+      .filter(x => !projectId || x.projectId === projectId)
+      .sort((a,b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+    if (!rows.length){
+      listHost.appendChild(
+        el("div", { class:"empty", style:"padding:14px;border:1px dashed rgba(0,0,0,.15);border-radius:14px;text-align:center;" },
+          "체크리스트 항목이 없습니다."
+        )
+      );
+      return;
+    }
+
+    rows.forEach(item => {
+      const meta = el("div", { class:"muted", style:"font-size:12px;" },
+        `${item.projectName || item.projectId || ""} · ${item.staffName || ""} · ${item.createdAt ? item.createdAt.slice(0,10) : ""}`
+      );
+
+      const title = el("div", { style:"font-weight:1000;" }, item.title || "(제목 없음)");
+      const desc = item.desc ? el("div", { class:"muted", style:"margin-top:6px;" }, item.desc) : null;
+
+      const btnDel = el("button", { class:"btn", type:"button" }, "삭제");
+      btnDel.onclick = () => {
+        if (!confirm("해당 체크리스트를 삭제할까요?")) return;
+        db.checklists = db.checklists.filter(x => x.id !== item.id);
+        if (typeof saveDB === "function") saveDB(db);
+        rerender();
+      };
+
+      const btnToggle = el("button", { class:"btn", type:"button" }, item.done ? "완료해제" : "완료");
+      btnToggle.onclick = () => {
+        item.done = !item.done;
+        item.doneAt = item.done ? nowISO() : null;
+        if (typeof saveDB === "function") saveDB(db);
+        rerender();
+      };
+
+      const right = el("div", { style:"display:flex;gap:8px;align-items:center;" }, btnToggle, btnDel);
+
+      const row = el("div", {
+        class:"card",
+        style:"padding:12px;border:1px solid rgba(0,0,0,.06);border-radius:14px;background:rgba(255,255,255,.86);"
+      });
+
+      const head = el("div", { style:"display:flex;justify-content:space-between;gap:10px;align-items:flex-start;" },
+        el("div", {}, title, meta),
+        right
+      );
+
+      row.appendChild(head);
+      if (desc) row.appendChild(desc);
+
+      if (item.imageDataUrl){
+        const img = el("img", {
+          src: item.imageDataUrl,
+          style:"margin-top:10px;max-width:420px;width:100%;border-radius:12px;border:1px solid rgba(0,0,0,.08);"
+        });
+        row.appendChild(img);
+      }
+
+      listHost.appendChild(row);
+    });
+  }
+
+  wrap.appendChild(listHost);
+  rerender();
+  return wrap;
+}
+
+/**
+ * ✅ 프로젝트별 체크리스트 화면
+ * - 상단: 체크리스트 작성
+ * - 하단: 체크리스트 목록(해당 프로젝트)
+ */
+function viewProjectChecklist(db){
+  const view = $("#view");
+  view.innerHTML = "";
+  if (typeof setRouteTitle === "function") setRouteTitle("업무관리 · 프로젝트별 체크리스트");
+
+  seedSampleProjectsIfEmpty(db);
+  ensureChecklistStore(db);
+
+  const projects = getProjectOptions(db);
+  const staff = getStaffOptions(db);
+
+  // 기본 프로젝트 선택값 (db.uiState에 저장)
+  if (!db.uiState) db.uiState = {};
+  if (!db.uiState.selectedProjectId) db.uiState.selectedProjectId = projects[0]?.id || "";
+  const selectedProjectId = db.uiState.selectedProjectId;
+
+  const projectSel = el("select", { class:"input", style:"width:100%;" });
+  projects.forEach(p => {
+    const opt = el("option", { value:p.id }, p.name);
+    if (p.id === selectedProjectId) opt.selected = true;
+    projectSel.appendChild(opt);
+  });
+
+  const staffSel = el("select", { class:"input", style:"width:100%;" });
+  staff.forEach(s => {
+    staffSel.appendChild(el("option", { value:s.id }, s.name));
+  });
+
+  const titleInput = el("input", { class:"input", placeholder:"체크리스트 제목(예: H10 → H13 변경)", style:"width:100%;" });
+  const descInput = el("textarea", { class:"input", placeholder:"설명(선택)", style:"width:100%;min-height:88px;resize:vertical;" });
+
+  const fileInput = el("input", { type:"file", accept:"image/*" });
+
+  const btnAdd = el("button", { class:"btn", type:"button" }, "새 항목 추가");
+  btnAdd.style.cssText = "border-radius:999px;font-weight:1000;padding:10px 14px;";
+
+  // 작성 카드
+  const formCard = el("div", { class:"card" },
+    el("div", { class:"card-head" },
+      el("div", { class:"card-title" }, "체크리스트 작성")
+    ),
+
+    el("div", { class:"grid", style:"display:grid;grid-template-columns:1.3fr .9fr;gap:16px;" },
+
+      // 좌측(제목/설명)
+      el("div", { class:"stack", style:"display:flex;flex-direction:column;gap:10px;" },
+        el("div", { class:"muted", style:"font-size:12px;font-weight:900;" }, "제목"),
+        titleInput,
+        el("div", { class:"muted", style:"font-size:12px;font-weight:900;margin-top:4px;" }, "설명(선택)"),
+        descInput
+      ),
+
+      // 우측(프로젝트/담당자/이미지)
+      el("div", { class:"stack", style:"display:flex;flex-direction:column;gap:10px;" },
+        el("div", { class:"muted", style:"font-size:12px;font-weight:900;" }, "프로젝트"),
+        projectSel,
+        el("div", { class:"muted", style:"font-size:12px;font-weight:900;margin-top:4px;" }, "담당자(staff)"),
+        staffSel,
+        el("div", { class:"muted", style:"font-size:12px;font-weight:900;margin-top:4px;" }, "이미지 첨부(선택)"),
+        el("div", { style:"display:flex;gap:10px;align-items:center;" },
+          el("label", { class:"btn", style:"cursor:pointer;" },
+            "파일 선택",
+            fileInput
+          ),
+          el("div", { class:"muted", id:"clFileName", style:"font-size:12px;" }, "선택된 파일 없음")
+        ),
+        el("div", { style:"display:flex;justify-content:flex-end;margin-top:6px;" }, btnAdd)
+      )
+    )
+  );
+
+  fileInput.onchange = () => {
+    const label = $("#clFileName");
+    if (!label) return;
+    label.textContent = fileInput.files?.[0]?.name || "선택된 파일 없음";
+  };
+
+  // 하단 목록(프로젝트 필터)
+  const listCardHost = el("div", { style:"margin-top:14px;" });
+  function rerenderList(){
+    // 선택값 저장
+    db.uiState.selectedProjectId = projectSel.value;
+    if (typeof saveDB === "function") saveDB(db);
+
+    listCardHost.innerHTML = "";
+    listCardHost.appendChild(renderChecklistListUI(db, { projectId: projectSel.value, mode:"embedded" }));
+  }
+
+  projectSel.onchange = rerenderList;
+
+  btnAdd.onclick = async () => {
+    const pid = projectSel.value;
+    const pObj = projects.find(p => p.id === pid);
+
+    const staffId = staffSel.value;
+    const staffObj = staff.find(s => s.id === staffId);
+
+    const title = (titleInput.value || "").trim();
+    const desc = (descInput.value || "").trim();
+
+    if (!pid){
+      alert("프로젝트를 선택하세요.");
+      return;
+    }
+    if (!title){
+      alert("제목을 입력하세요.");
+      titleInput.focus();
+      return;
+    }
+
+    let imageDataUrl = "";
+    const file = fileInput.files?.[0];
+    if (file){
+      try{
+        imageDataUrl = await readFileAsDataURL(file);
+      }catch(e){
+        console.warn(e);
+        alert("이미지 읽기 실패");
+        return;
+      }
+    }
+
+    const item = {
+      id: uid("cl"),
+      projectId: pid,
+      projectName: pObj?.name || pid,
+      staffId,
+      staffName: staffObj?.name || staffId || "",
+      title,
+      desc,
+      imageDataUrl,
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+      done: false,
+      doneAt: null
+    };
+
+    db.checklists.unshift(item);
+    if (typeof saveDB === "function") saveDB(db);
+
+    // reset input
+    titleInput.value = "";
+    descInput.value = "";
+    fileInput.value = "";
+    const label = $("#clFileName");
+    if (label) label.textContent = "선택된 파일 없음";
+
+    rerenderList();
+  };
+
+  view.appendChild(formCard);
+  view.appendChild(listCardHost);
+  rerenderList();
+}
+
+/**
+ * ✅ 체크리스트 목록(프로젝트별) 화면
+ * - 목록만 표시 + 프로젝트 드롭다운
+ */
+function viewChecklistList(db){
+  const view = $("#view");
+  view.innerHTML = "";
+  if (typeof setRouteTitle === "function") setRouteTitle("업무관리 · 체크리스트 목록");
+
+  seedSampleProjectsIfEmpty(db);
+  ensureChecklistStore(db);
+  if (!db.uiState) db.uiState = {};
+
+  const projects = getProjectOptions(db);
+
+  const projectSel = el("select", { class:"input", style:"width:100%;max-width:520px;" });
+  projects.forEach(p => {
+    const opt = el("option", { value:p.id }, p.name);
+    if (p.id === (db.uiState.selectedProjectId || projects[0]?.id)) opt.selected = true;
+    projectSel.appendChild(opt);
+  });
+
+  const topRow = el("div", { style:"display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:10px;" },
+    el("div", { class:"muted", style:"font-weight:900;font-size:12px;" }, "프로젝트"),
+    projectSel
+  );
+
+  const host = el("div", {});
+  function rerender(){
+    db.uiState.selectedProjectId = projectSel.value;
+    if (typeof saveDB === "function") saveDB(db);
+    host.innerHTML = "";
+    host.appendChild(renderChecklistListUI(db, { projectId: projectSel.value, mode:"full" }));
+  }
+
+  projectSel.onchange = rerender;
+
+  view.appendChild(topRow);
+  view.appendChild(host);
+  rerender();
+}
+
+
+
+  
 
   function viewChecklistList(db, teamLabel){
     const view = $("#view2");
