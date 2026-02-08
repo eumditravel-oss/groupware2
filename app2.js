@@ -634,9 +634,10 @@ function computeProjectTotalHours(db, projectId){
    * 카드 1: 배정받은 현재 프로젝트 관리(PM)
    ***********************/
   const myPMProjects = (db.projectPM || [])
-    .filter(r => Object.values(r.parts || {}).includes(uid))
-    .map(r => projById(db, r.projectId))
-    .filter(Boolean);
+  .filter(r => Object.values(r.parts || {}).includes(myRole)) // ✅ uid → myRole
+  .map(r => projById(db, r.projectId))
+  .filter(Boolean);
+
 
   const pmList = myPMProjects.length
     ? el("div", { class:"list2" },
@@ -1055,31 +1056,18 @@ function viewPMAssign(db){
   db.projectPM = Array.isArray(db.projectPM) ? db.projectPM : [];
 
   const updaterId = getUserId(db);
+  const me = userById(db, updaterId);
+  const myRole = me?.role || "staff";
 
   /***********************
    * Helpers
    ***********************/
-  function findOrCreateUserByName(name){
-    const n = (name || "").trim();
-    if (!n) return null;
-
-    // 1) 기존 users에서 name 일치 찾기
-    const found = (db.users || []).find(u => (u.name || "").trim() === n);
-    if (found) return found.userId;
-
-    // 2) 없으면 임시 유저 생성(권한은 staff 기본)
-    const newId = `u_${uuid().slice(0,8)}`;
-    db.users.push({ userId:newId, name:n, role:"staff" });
-    return newId;
-  }
-
   function buildYearOptions(){
     const set = new Set();
     for (const p of db.projects){
       const y = projectYearFromProject(p);
       if (y) set.add(y);
     }
-    // 최소 현재년도 보장
     if (!set.size) set.add(String(new Date().getFullYear()));
     return Array.from(set).sort((a,b)=>b.localeCompare(a));
   }
@@ -1092,64 +1080,223 @@ function viewPMAssign(db){
     return `${p.projectCode||p.projectId} (${p.projectName||""})`.trim();
   }
 
+  // 값이 roleKey면 직급 라벨로, userId면 기존처럼 이름으로 표시(하위호환)
+  function displayAssignee(db, v){
+    if (!v) return "-";
+    if (ROLE_LABEL_KO[v]) return ROLE_LABEL_KO[v]; // roleKey
+    return userNameById(db, v);                    // userId(기존 데이터)
+  }
+
+  /***********************
+   * Popup window picker (새 창)
+   ***********************/
+  function openPickerWindow({ title, items, placeholder, onPick }){
+    const w = 560, h = 640;
+    const left = Math.max(0, Math.floor((window.screenX || 0) + ((window.outerWidth || 1200) - w)/2));
+    const top  = Math.max(0, Math.floor((window.screenY || 0) + ((window.outerHeight || 800) - h)/2));
+
+    // items: [{ value, label, sub? }]
+    const payload = { title, items, placeholder };
+
+    const html = `
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${escapeHtml(title||"선택")}</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --paper:#fff; --ink:#1d1d1f; --muted:#6b6b73; --line:rgba(0,0,0,.10);
+    --radius:14px;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",Arial; background:var(--bg); color:var(--ink); }
+  .wrap{ padding:14px; }
+  .card{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:12px; }
+  .head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+  .title{ font-weight:1000; font-size:16px; }
+  .hint{ color:var(--muted); font-size:12px; font-weight:900; margin-top:4px; }
+  .close{ border:1px solid var(--line); background:#fff; border-radius:12px; padding:8px 10px; font-weight:900; cursor:pointer; }
+  .search{ width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-weight:900; outline:none; }
+  .list{ margin-top:10px; display:flex; flex-direction:column; gap:8px; max-height:520px; overflow:auto; padding-right:2px; }
+  .item{ text-align:left; border:1px solid var(--line); background:#fff; border-radius:12px; padding:10px 12px; cursor:pointer; }
+  .item:hover{ outline:2px solid rgba(240,138,36,.22); }
+  .label{ font-weight:1100; }
+  .sub{ margin-top:4px; color:var(--muted); font-size:12px; font-weight:900; }
+  .empty{ color:var(--muted); font-weight:900; padding:10px 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div>
+          <div class="title" id="t"></div>
+          <div class="hint">검색 후 항목을 클릭하면 자동으로 창이 닫히며 값이 입력됩니다.</div>
+        </div>
+        <button class="close" id="btnClose">닫기</button>
+      </div>
+
+      <input class="search" id="q" placeholder="" />
+
+      <div class="list" id="list"></div>
+    </div>
+  </div>
+
+<script>
+  const payload = ${JSON.stringify(payload)};
+  document.getElementById("t").textContent = payload.title || "선택";
+  const q = document.getElementById("q");
+  q.placeholder = payload.placeholder || "검색...";
+  const list = document.getElementById("list");
+  const items = (payload.items || []);
+
+  function render(){
+    const term = (q.value || "").trim().toLowerCase();
+    list.innerHTML = "";
+    const filtered = !term ? items : items.filter(x => (x.label||"").toLowerCase().includes(term));
+    if (!filtered.length){
+      const d = document.createElement("div");
+      d.className = "empty";
+      d.textContent = "검색 결과 없음";
+      list.appendChild(d);
+      return;
+    }
+    filtered.forEach(x=>{
+      const b = document.createElement("button");
+      b.type="button";
+      b.className = "item";
+
+      const l = document.createElement("div");
+      l.className = "label";
+      l.textContent = x.label || "-";
+
+      b.appendChild(l);
+
+      if (x.sub){
+        const s = document.createElement("div");
+        s.className = "sub";
+        s.textContent = x.sub;
+        b.appendChild(s);
+      }
+
+      b.addEventListener("click", ()=>{
+        try{
+          if (window.opener){
+            window.opener.postMessage({ type:"APP2_PICK", value:x.value, label:x.label }, "*");
+          }
+        }catch(e){}
+        window.close();
+      });
+
+      list.appendChild(b);
+    });
+  }
+
+  q.addEventListener("input", render);
+  document.getElementById("btnClose").addEventListener("click", ()=> window.close());
+
+  render();
+  setTimeout(()=> q.focus(), 50);
+</script>
+</body>
+</html>`;
+
+    const url = "data:text/html;charset=utf-8," + encodeURIComponent(html);
+    const win = window.open(
+      url,
+      "APP2_PICKER",
+      `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+    if (!win) {
+      toast("팝업이 차단되었습니다. 브라우저에서 팝업 허용 후 다시 시도하세요.");
+      return;
+    }
+
+    const handler = (ev)=>{
+      if (!ev?.data || ev.data.type !== "APP2_PICK") return;
+      window.removeEventListener("message", handler);
+      onPick?.(ev.data.value, ev.data.label);
+    };
+    window.addEventListener("message", handler);
+  }
+
+  function escapeHtml(s){
+    return String(s||"")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#39;");
+  }
+
   /***********************
    * State (form mode)
    ***********************/
-  // mode: "new" | "edit"
   let formMode = "new";
   let editingKey = null; // {year, projectId}
 
   /***********************
-   * UI - Year (1)
+   * UI - Year
    ***********************/
   const years = buildYearOptions();
   const yearSel = el("select", { class:"btn2" }, ...years.map(y => el("option", { value:y }, `${y}년`)));
 
   /***********************
-   * UI - Project dropdown + search (2)
+   * UI - Project "box" (readonly input) + popup
    ***********************/
-  const projectSearch = el("input", {
+  let selectedProjectId = "";
+  const projectBox = el("input", {
     class:"btn2",
     type:"text",
-    placeholder:"프로젝트 검색 (코드/명칭)",
-    value:""
+    value:"",
+    placeholder:"프로젝트 선택",
+    readonly:"readonly",
+    style:"cursor:pointer;"
   });
 
-  const projectSel = el("select", { class:"btn2" });
-
-  function rebuildProjectSelect(){
+  function openProjectPicker(){
     const y = yearSel.value;
-    const q = (projectSearch.value || "").trim().toLowerCase();
+    const list = projectsByYear(y).map(p => ({
+      value: p.projectId,
+      label: projLabel(p),
+      sub: `${p.projectCode||p.projectId}`
+    }));
 
-    const list = projectsByYear(y).filter(p=>{
-      if (!q) return true;
-      const t = `${p.projectCode||p.projectId} ${p.projectName||""}`.toLowerCase();
-      return t.includes(q);
-    });
-
-    projectSel.innerHTML = "";
-    list.forEach(p=>{
-      projectSel.appendChild(el("option", { value:p.projectId }, projLabel(p)));
-    });
-
-    // 비었으면 안내 option 1개
     if (!list.length){
-      projectSel.appendChild(el("option", { value:"" }, "검색 결과 없음"));
+      toast("해당 년도에 등록된 프로젝트가 없습니다.");
+      return;
     }
+
+    openPickerWindow({
+      title: `${y}년 프로젝트 선택`,
+      items: list,
+      placeholder: "코드/명칭 검색",
+      onPick:(value, label)=>{
+        selectedProjectId = value;
+        projectBox.value = label || "";
+        // 모드 리셋
+        formMode = "new";
+        editingKey = null;
+        rerenderModeBadge();
+      }
+    });
   }
 
+  projectBox.addEventListener("click", openProjectPicker);
+
   yearSel.addEventListener("change", ()=>{
-    projectSearch.value = "";
-    rebuildProjectSelect();
-    // 모드 리셋
-    formMode = "new"; editingKey = null;
+    // 년도 바뀌면 선택 초기화
+    selectedProjectId = "";
+    projectBox.value = "";
+    formMode = "new";
+    editingKey = null;
     rerenderModeBadge();
   });
-  projectSearch.addEventListener("input", rebuildProjectSelect);
-  rebuildProjectSelect();
 
   /***********************
-   * UI - Team checkboxes (3)
+   * UI - Team checkboxes
    ***********************/
   const checks = {};
   const partBox = el("div", { style:"display:flex;gap:14px;flex-wrap:wrap;" },
@@ -1163,27 +1310,40 @@ function viewPMAssign(db){
   );
 
   /***********************
-   * UI - 담당자 지정 (4)
-   * - 이름 직접입력 + (선택) 사용자 드롭다운
+   * UI - "사용자 선택" = 직급 선택 박스 (readonly) + popup
    ***********************/
-  const nameInput = el("input", {
+  let selectedRole = ""; // roleKey (staff/leader/manager/...)
+  const roleBox = el("input", {
     class:"btn2",
     type:"text",
-    placeholder:"담당자 이름 입력",
-    value:""
+    value:"",
+    placeholder:"사용자 선택(직급)",
+    readonly:"readonly",
+    style:"cursor:pointer;"
   });
 
-  const userSel = el("select", { class:"btn2" },
-    el("option", { value:"" }, "사용자 선택(선택)"),
-    ...(db.users||[]).map(u => el("option", { value:u.userId }, `${u.name} (${ROLE_LABEL_KO[u.role]||u.role})`))
-  );
+  function openRolePicker(){
+    const items = ROLE_ORDER.map(r => ({
+      value: r,
+      label: ROLE_LABEL_KO[r] || r,
+      sub: r
+    }));
 
-  userSel.addEventListener("change", ()=>{
-    const uid = userSel.value;
-    if (!uid) return;
-    const u = userById(db, uid);
-    if (u?.name) nameInput.value = u.name;
-  });
+    openPickerWindow({
+      title: "직급 선택",
+      items,
+      placeholder: "직급 검색 (예: 팀장, 실장)",
+      onPick:(value, label)=>{
+        selectedRole = value;
+        roleBox.value = label || "";
+        formMode = "new";
+        editingKey = null;
+        rerenderModeBadge();
+      }
+    });
+  }
+
+  roleBox.addEventListener("click", openRolePicker);
 
   /***********************
    * Mode badge
@@ -1199,42 +1359,27 @@ function viewPMAssign(db){
   }
   rerenderModeBadge();
 
-  /***********************
-   * Validate common
-   ***********************/
   function getSelectedParts(){
     return PM_PARTS.map(x=>x.key).filter(k => checks[k]?.checked);
   }
 
   function ensureInputs(){
     const y = yearSel.value;
-    const pid = projectSel.value;
+    const pid = selectedProjectId;
 
     if (!y) { toast("년도를 선택해 주세요."); return null; }
-    if (!pid) { toast("프로젝트를 선택해 주세요."); return null; }
+    if (!pid) { toast("프로젝트 명칭 박스를 눌러 프로젝트를 선택해 주세요."); return null; }
 
     const selectedParts = getSelectedParts();
     if (!selectedParts.length) { toast("구조ㆍBIM / 토목ㆍ조경 / 마감 중 1개 이상 선택해 주세요."); return null; }
 
-    const nm = (nameInput.value || "").trim();
-    if (!nm) { toast("담당자 이름을 입력해 주세요."); return null; }
+    if (!selectedRole) { toast("‘사용자 선택(직급)’ 박스를 눌러 직급을 선택해 주세요."); return null; }
 
-    // 이름→userId 확정 (없으면 생성)
-    const targetUid = findOrCreateUserByName(nm);
-    if (!targetUid) { toast("담당자 이름을 확인해 주세요."); return null; }
-
-    // userSel도 동기화(있으면)
-    if (userSel.value !== targetUid){
-      userSel.value = targetUid;
-    }
-
-    return { y, pid, selectedParts, targetUid };
+    return { y, pid, selectedParts, targetRole: selectedRole };
   }
 
   /***********************
    * Buttons
-   * 5) 확인(최종 확정) : 신규만 허용(이미 있으면 수정 사용)
-   * 6) 수정 : 기존만 허용
    ***********************/
   const confirmBtn = el("button", {
     class:"btn2 primary2",
@@ -1248,7 +1393,17 @@ function viewPMAssign(db){
         return;
       }
 
-      setPMForParts(db, x.y, x.pid, x.selectedParts, x.targetUid, updaterId);
+      // ✅ role로 저장
+      db.projectPM = Array.isArray(db.projectPM) ? db.projectPM : [];
+      let rec = getPMRecord(db, x.y, x.pid);
+      if (!rec){
+        rec = { pmId: uuid(), year: x.y, projectId: x.pid, parts:{}, updatedAt:"", updatedBy:"" };
+        db.projectPM.unshift(rec);
+      }
+      x.selectedParts.forEach(k => { rec.parts[k] = x.targetRole; });
+      rec.updatedAt = nowISO();
+      rec.updatedBy = updaterId;
+
       saveDB(db);
       toast("PM 최종 확정 완료");
       formMode = "new"; editingKey = null;
@@ -1269,7 +1424,11 @@ function viewPMAssign(db){
         return;
       }
 
-      setPMForParts(db, x.y, x.pid, x.selectedParts, x.targetUid, updaterId);
+      // ✅ role로 수정 저장
+      x.selectedParts.forEach(k => { exists.parts[k] = x.targetRole; });
+      exists.updatedAt = nowISO();
+      exists.updatedBy = updaterId;
+
       saveDB(db);
       toast("PM 수정 완료");
       formMode = "new"; editingKey = null;
@@ -1287,22 +1446,18 @@ function viewPMAssign(db){
       modeBadge
     ),
 
-    // 1) 년도 우선
+    // 1) 년도 + 2) 프로젝트명 박스(클릭=새 창)
     el("div", { style:"display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:10px;" },
       yearSel,
-      el("div", { style:"display:flex;gap:10px;align-items:center;" },
-        projectSearch,
-        projectSel
-      )
+      projectBox
     ),
 
     // 3) 팀 체크박스
     el("div", { style:"margin-bottom:10px;" }, partBox),
 
-    // 4) 담당자 이름 지정 + (선택) user dropdown
-    el("div", { style:"display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:10px;" },
-      nameInput,
-      userSel
+    // 4) 직급 선택 박스(클릭=새 창)
+    el("div", { style:"display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px;" },
+      roleBox
     ),
 
     // 5,6) 버튼
@@ -1312,7 +1467,7 @@ function viewPMAssign(db){
     ),
 
     el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:10px;" },
-      "절차: ①년도 → ②프로젝트 검색/선택 → ③팀 선택 → ④담당자 지정 → ⑤확인(최종 확정). 기존 데이터 변경은 ‘수정’ 사용."
+      "절차: ①년도 → ②프로젝트 명칭 박스 클릭(새 창) → ③팀 선택 → ④사용자 선택(직급) 박스 클릭(새 창) → ⑤확인(최종 확정). 기존 변경은 ‘수정’ 사용."
     )
   );
 
@@ -1325,36 +1480,33 @@ function viewPMAssign(db){
   view.appendChild(listCard);
 
   function loadToFormForEdit(rec){
-    // year
     yearSel.value = rec.year || yearSel.value;
 
-    // rebuild project list first
-    projectSearch.value = "";
-    rebuildProjectSelect();
+    // 프로젝트
+    const p = projById(db, rec.projectId);
+    selectedProjectId = rec.projectId || "";
+    projectBox.value = p ? projLabel(p) : (rec.projectId || "");
 
-    // project
-    projectSel.value = rec.projectId || "";
-
-    // parts: 존재하는 파트는 체크
+    // parts 체크: 값이 있으면 체크
     for (const pt of PM_PARTS){
-      const uid = rec.parts?.[pt.key] || "";
-      checks[pt.key].checked = !!uid;
+      const v = rec.parts?.[pt.key] || "";
+      checks[pt.key].checked = !!v;
     }
 
-    // 담당자: 우선 structBim -> civilLandscape -> finish 순으로 첫 값 사용
-    const pickUid =
+    // 직급: parts 중 첫 값(우선순위)
+    const pick =
       rec.parts?.structBim ||
       rec.parts?.civilLandscape ||
       rec.parts?.finish ||
       "";
 
-    if (pickUid){
-      const u = userById(db, pickUid);
-      nameInput.value = u?.name || pickUid;
-      userSel.value = pickUid;
+    if (ROLE_LABEL_KO[pick]){
+      selectedRole = pick;
+      roleBox.value = ROLE_LABEL_KO[pick];
     } else {
-      nameInput.value = "";
-      userSel.value = "";
+      // 기존 userId 데이터면: 현재는 “직급 시스템”이라 roleBox에는 userId/이름을 그대로 노출(하위호환)
+      selectedRole = "";
+      roleBox.value = displayAssignee(db, pick);
     }
 
     formMode = "edit";
@@ -1394,11 +1546,11 @@ function viewPMAssign(db){
         return el("tr", {},
           el("td", { class:"mutedCell" }, r.year || "-"),
           el("td", {}, pname),
-          el("td", { class:"mutedCell" }, userNameById(db, r.parts?.structBim || "")),
-          el("td", { class:"mutedCell" }, userNameById(db, r.parts?.civilLandscape || "")),
-          el("td", { class:"mutedCell" }, userNameById(db, r.parts?.finish || "")),
+          el("td", { class:"mutedCell" }, displayAssignee(db, r.parts?.structBim || "")),
+          el("td", { class:"mutedCell" }, displayAssignee(db, r.parts?.civilLandscape || "")),
+          el("td", { class:"mutedCell" }, displayAssignee(db, r.parts?.finish || "")),
           el("td", {}, editRowBtn),
-          el("td", { class:"mutedCell" }, `${r.updatedAt || "-"} · ${userNameById(db, r.updatedBy || "")}`)
+          el("td", { class:"mutedCell" }, `${r.updatedAt || "-"} · ${displayAssignee(db, r.updatedBy || "")}`)
         );
       })
     );
@@ -1423,6 +1575,7 @@ function viewPMAssign(db){
 
   rerenderList();
 }
+
 
 
 
@@ -3128,7 +3281,9 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
   function render(){
     const db = ensureDB();
     const uid = getUserId(db);
-    const me = userById(db, uid);
+const me = userById(db, uid);
+const myRole = me?.role || "staff";
+
 
     $("#profile2").textContent = `${me?.name||"-"} (${ROLE_LABEL_KO[me?.role||"staff"]||"-"})`;
 
