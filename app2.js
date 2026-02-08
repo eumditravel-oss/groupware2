@@ -3281,6 +3281,7 @@ function viewDeliveryManage(db){
   const needApproval = (!canBypass && !grantedToday);
   if (needApproval){
     const alreadyReq = (db.deliveryAccessRequests||[]).some(r => r.userId === uid && r.date === todayISO());
+
     const reqBtn = el("button", {
       class:"btn2 primary2",
       onclick:()=>{
@@ -3331,12 +3332,10 @@ function viewDeliveryManage(db){
       const okBtn = el("button", {
         class:"btn2 primary2",
         onclick:()=>{
-          // 요청 승인 → 오늘 권한 부여
           r.status = "approved";
           r.decidedBy = uid;
           r.decidedAt = nowISO();
 
-          // grant upsert
           const today = todayISO();
           db.deliveryAccess = Array.isArray(db.deliveryAccess) ? db.deliveryAccess : [];
           const exists = db.deliveryAccess.find(g => g.userId === r.userId && g.date === today);
@@ -3417,6 +3416,7 @@ function viewDeliveryManage(db){
 
   function openDeliveryPicker(){
     if (!selectedProjectId) return toast("먼저 프로젝트를 선택하세요.");
+    if (!canView) return toast("열람 권한이 없습니다. 실장 승인 후 이용 가능합니다.");
 
     const list = (db.deliveryFiles||[])
       .filter(f => f.projectId === selectedProjectId)
@@ -3434,72 +3434,139 @@ function viewDeliveryManage(db){
       ...list.map(f=>{
         const dt = (f.uploadedAt || "").slice(0,10) || "-";
         const label = `${dt} · ${f.deliveryNo || "-"}차 · ${f.originalName || f.name || "파일"}`;
+
         return el("button", {
           class:"btn2",
           style:"text-align:left;justify-content:flex-start;",
           onclick:()=>{
-            selectedDeliveryId = f.fileId;
+            selectedDeliveryId = f.deliveryId || f.fileId || f.id || "";
             deliveryBox.value = label;
             updateDlBtn();
             modalClose();
+            toast("납품자료를 선택했습니다.");
           }
         }, label);
       })
     );
 
     body.appendChild(
-      el("div", { style:"font-weight:1100;" }, "납품파일 선택")
+      el("div", { style:"font-weight:1100;" }, "납품자료 선택")
     );
     body.appendChild(
-      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "리스트에서 1개를 선택하면 다운로드 버튼이 활성화됩니다.")
+      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" },
+        "목록에서 파일을 선택하면 다운로드 버튼이 활성화됩니다."
+      )
     );
     body.appendChild(rows);
 
-    modalOpen("납품파일 선택", body);
+    modalOpen("납품자료 선택", body);
   }
 
   projectBox.addEventListener("click", ()=>{
-    if (!canView) return toast("열람 권한이 없습니다. (실장 승인 필요)");
     openProjectSearchPicker(db, (pid, label)=>{
       selectedProjectId = pid;
-      projectBox.value = label || "";
+      projectBox.value = label || projLabel(db, pid);
+
+      // 선택 초기화
       selectedDeliveryId = "";
       deliveryBox.value = "";
       updateDlBtn();
     });
   });
 
-  deliveryBox.addEventListener("click", ()=>{
-    if (!canView) return toast("열람 권한이 없습니다. (실장 승인 필요)");
-    openDeliveryPicker();
-  });
+  deliveryBox.addEventListener("click", openDeliveryPicker);
 
   dlBtn.addEventListener("click", ()=>{
-    if (!canView) return toast("열람 권한이 없습니다. (실장 승인 필요)");
-    const f = (db.deliveryFiles||[]).find(x => x.fileId === selectedDeliveryId);
-    if (!f) return toast("선택한 납품파일을 찾을 수 없습니다.");
-    const fn = f.originalName || `delivery_${selectedProjectId}_${f.deliveryNo||""}.bin`;
-    downloadDataUrl(fn, f.dataUrl);
+    if (!selectedProjectId) return toast("프로젝트를 먼저 선택하세요.");
+    if (!selectedDeliveryId) return toast("납품자료를 선택하세요.");
+    if (!canView) return toast("열람 권한이 없습니다. 실장 승인 후 이용 가능합니다.");
+
+    const file = (db.deliveryFiles||[]).find(f =>
+      (f.deliveryId && f.deliveryId === selectedDeliveryId) ||
+      (f.fileId && f.fileId === selectedDeliveryId) ||
+      (f.id && f.id === selectedDeliveryId)
+    );
+    if (!file) return toast("파일 정보를 찾을 수 없습니다.");
+
+    const dataUrl = file.dataUrl || file.url || "";
+    if (!dataUrl || !String(dataUrl).startsWith("data:")){
+      return toast("파일 데이터가 없습니다. (업로드 화면에서 다시 업로드 필요)");
+    }
+
+    const fname = (file.originalName || file.name || `delivery_${selectedDeliveryId}`).replace(/[\\/:*?"<>|]/g, "_");
+    downloadDataUrl(fname, dataUrl);
   });
 
-  const main = el("div", { class:"card2", style:"padding:12px 14px;" },
+  // ---- 최근 업로드 목록(열람 가능 시) ----
+  const recent = (db.deliveryFiles||[])
+    .slice()
+    .sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||""))
+    .slice(0, 20);
+
+  const recentList = el("div", { class:"card2", style:"padding:12px 14px;margin-top:12px;" },
+    el("div", { style:"font-weight:1100;margin-bottom:8px;" }, "최근 업로드(최대 20건)"),
+    recent.length
+      ? el("div", { class:"boardList2" },
+          ...recent.map(f=>{
+            const pLabel = projLabel(db, f.projectId);
+            const dt = (f.uploadedAt || "").slice(0,10) || "-";
+            const title = `${dt} · ${f.deliveryNo || "-"}차 · ${f.originalName || f.name || "파일"}`;
+
+            const pickBtn = el("button", {
+              class:"btn2 ghost2",
+              onclick:()=>{
+                if (!canView) return toast("열람 권한이 없습니다. 실장 승인 후 이용 가능합니다.");
+
+                selectedProjectId = f.projectId || "";
+                projectBox.value = pLabel;
+
+                selectedDeliveryId = f.deliveryId || f.fileId || f.id || "";
+                deliveryBox.value = title;
+
+                updateDlBtn();
+                toast("선택값을 반영했습니다.");
+              }
+            }, "선택");
+
+            return el("div", { class:"boardRow2" },
+              el("div", { class:"boardTitle2" }, title),
+              el("div", { class:"boardMeta2" }, `${pLabel}`),
+              el("div", { style:"display:flex;justify-content:flex-end;" }, pickBtn)
+            );
+          })
+        )
+      : el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "업로드된 납품자료가 없습니다.")
+  );
+
+  const bodyCard = el("div", { class:"card2", style:"padding:12px 14px;" },
     el("div", { style:"font-weight:1100;margin-bottom:10px;" }, "프로젝트/납품자료 선택"),
     el("div", { style:"display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px;" },
       projectBox,
       deliveryBox
     ),
-    el("div", { style:"display:flex;justify-content:flex-end;" }, dlBtn)
+    el("div", { style:"display:flex;justify-content:flex-end;gap:10px;" },
+      dlBtn
+    ),
+    el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:10px;line-height:1.5;" },
+      canView
+        ? "열람 가능 상태입니다. 프로젝트 → 납품자료 선택 후 다운로드하세요."
+        : "열람 불가 상태입니다. (사원은 실장 승인 필요)"
+    )
   );
 
   view.appendChild(info);
   if (approvePanel) view.appendChild(approvePanel);
-  view.appendChild(main);
+  view.appendChild(bodyCard);
+  view.appendChild(recentList);
+
+  updateDlBtn();
 }
 
+
 /* =========================
- * (B) 납품자료 업로드 (승인 없이 사용)
- *  - 프로젝트 검색(새 창) + n차 텍스트 + 파일 업로드
- *  - 바꿔치기(교체): 동일 프로젝트/동일 n차가 있으면 replace 허용
+ * (B) 납품자료 업로드
+ *  - 로컬저장(localStorage) 기반: dataUrl 저장
+ *  - 용량 제한(브라우저 저장소) 있음
  * ========================= */
 function viewDeliveryUpload(db){
   const view = $("#view2");
@@ -3511,9 +3578,21 @@ function viewDeliveryUpload(db){
   const uid = getUserId(db);
   const me = userById(db, uid);
 
-  let selectedProjectId = "";
-  let replaceTargetId = ""; // 특정 파일 레코드를 지정해 바꿔치기
+  // 업로드 권한: 팀장 이상만 허용(원하면 변경 가능)
+  const canUpload = roleRank(me?.role || "staff") >= roleRank("leader");
+  if (!canUpload){
+    view.appendChild(
+      el("div", { class:"card2", style:"padding:14px;" },
+        el("div", { style:"font-weight:1100;margin-bottom:6px;" }, "업로드 권한 없음"),
+        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;line-height:1.5;" },
+          "납품자료 업로드는 팀장 이상만 가능합니다."
+        )
+      )
+    );
+    return;
+  }
 
+  let selectedProjectId = "";
   const projectBox = el("input", {
     class:"btn2",
     type:"text",
@@ -3523,199 +3602,131 @@ function viewDeliveryUpload(db){
     style:"cursor:pointer;"
   });
 
+  projectBox.addEventListener("click", ()=>{
+    openProjectSearchPicker(db, (pid, label)=>{
+      selectedProjectId = pid;
+      projectBox.value = label || projLabel(db, pid);
+    });
+  });
+
   const deliveryNoInput = el("input", {
     class:"btn2",
-    type:"text",
-    value:"",
-    placeholder:"몇차 납품자료인지 입력 (예: 1, 2, 3...)"
+    type:"number",
+    min:"1",
+    step:"1",
+    value:"1",
+    placeholder:"몇 차 납품인지 (예: 1)"
   });
 
   const fileInput = el("input", {
     class:"btn2",
-    type:"file"
+    type:"file",
+    multiple:"multiple",
+    accept:"*/*"
   });
 
-  const replaceCb = el("input", { type:"checkbox" });
-  const replaceLabel = el("label", { style:"display:flex;align-items:center;gap:8px;font-weight:1000;" },
-    replaceCb,
-    el("span", {}, "동일 차수 존재 시 바꿔치기(교체) 허용")
-  );
+  const hint = el("div", {
+    style:"color:var(--muted);font-size:12px;font-weight:900;line-height:1.5;margin-top:8px;"
+  }, "※ 브라우저 로컬저장(localStorage)에 파일을 dataURL로 저장합니다. 큰 파일은 저장 실패할 수 있습니다.");
 
   const uploadBtn = el("button", { class:"btn2 primary2" }, "업로드");
 
-  function listByProject(pid){
-    return (db.deliveryFiles||[])
-      .filter(f => f.projectId === pid)
-      .slice()
-      .sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||""));
-  }
-
-  function rerenderList(){
-    listCard.innerHTML = "";
-    listCard.appendChild(el("div", { class:"card2-title" }, "업로드된 납품자료"));
-
-    if (!selectedProjectId){
-      listCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하면 업로드된 납품자료 목록이 표시됩니다."));
-      return;
-    }
-
-    const rows = listByProject(selectedProjectId);
-    if (!rows.length){
-      listCard.appendChild(el("div", { class:"wtEmpty2" }, "해당 프로젝트의 납품자료가 없습니다."));
-      return;
-    }
-
-    const body = el("tbody", {},
-      ...rows.map(f=>{
-        const dt = (f.uploadedAt||"").slice(0,10) || "-";
-        const fn = f.originalName || f.name || "-";
-        const who = f.uploadedByName || f.uploadedBy || "-";
-        const repBtn = el("button", {
-          class:"btn2 ghost2",
-          onclick:()=>{
-            replaceTargetId = f.fileId;
-            deliveryNoInput.value = String(f.deliveryNo || "").trim();
-            replaceCb.checked = true;
-            toast("교체 대상이 지정되었습니다. 파일을 선택한 뒤 업로드를 누르면 바꿔치기 됩니다.");
-          }
-        }, "바꿔치기");
-
-        return el("tr", {},
-          el("td", { class:"mutedCell" }, dt),
-          el("td", {}, `${f.deliveryNo || "-"}차`),
-          el("td", {}, fn),
-          el("td", { class:"mutedCell" }, who),
-          el("td", {}, repBtn)
-        );
-      })
-    );
-
-    const tbl = el("table", { class:"tbl2" },
-      el("thead", {},
-        el("tr", {},
-          el("th", {}, "업로드일"),
-          el("th", {}, "차수"),
-          el("th", {}, "파일명"),
-          el("th", {}, "업로더"),
-          el("th", { class:"w120" }, "교체")
-        )
-      ),
-      body
-    );
-
-    listCard.appendChild(el("div", { class:"tableWrap" }, tbl));
-  }
-
-  projectBox.addEventListener("click", ()=>{
-    openProjectSearchPicker(db, (pid, label)=>{
-      selectedProjectId = pid;
-      projectBox.value = label || "";
-      replaceTargetId = "";
-      rerenderList();
-    });
-  });
-
-  function readFileAsDataUrl(file){
+  function readAsDataURL(file){
     return new Promise((resolve, reject)=>{
       const fr = new FileReader();
-      fr.onload = ()=> resolve(String(fr.result||""));
-      fr.onerror = ()=> reject(new Error("read error"));
+      fr.onload = ()=> resolve(String(fr.result || ""));
+      fr.onerror = ()=> reject(fr.error || new Error("read failed"));
       fr.readAsDataURL(file);
     });
   }
 
   uploadBtn.addEventListener("click", async ()=>{
     if (!selectedProjectId) return toast("프로젝트를 먼저 선택하세요.");
-    const deliveryNo = (deliveryNoInput.value || "").trim();
-    if (!deliveryNo) return toast("몇차 납품자료인지 입력하세요.");
-    const file = fileInput.files?.[0];
-    if (!file) return toast("업로드할 파일을 선택하세요.");
+    const files = Array.from(fileInput.files || []);
+    if (!files.length) return toast("업로드할 파일을 선택하세요.");
 
-    // 동일 프로젝트 + 동일 차수 존재 여부
-    const exists = (db.deliveryFiles||[]).find(f => f.projectId === selectedProjectId && String(f.deliveryNo||"") === deliveryNo);
+    const deliveryNo = String(Math.max(1, Number(deliveryNoInput.value || 1)));
 
-    // 바꿔치기 대상 우선
-    let target = null;
-    if (replaceTargetId){
-      target = (db.deliveryFiles||[]).find(f => f.fileId === replaceTargetId) || null;
-    } else if (exists){
-      target = exists;
-    }
-
-    if (target && !replaceCb.checked){
-      return toast("동일 차수 자료가 존재합니다. ‘바꿔치기 허용’을 체크하거나 목록에서 ‘바꿔치기’를 누르세요.");
-    }
-
-    let dataUrl = "";
     try{
-      dataUrl = await readFileAsDataUrl(file);
-    }catch{
-      return toast("파일 읽기에 실패했습니다.");
-    }
+      for (const f of files){
+        const dataUrl = await readAsDataURL(f);
 
-    if (target && replaceCb.checked){
-      // 교체(덮어쓰기)
-      target.originalName = file.name;
-      target.mime = file.type || "";
-      target.size = file.size || 0;
-      target.dataUrl = dataUrl;
-
-      target.uploadedAt = nowISO();
-      target.uploadedBy = uid;
-      target.uploadedByName = me?.name || uid;
+        db.deliveryFiles.unshift({
+          deliveryId: uuid(),
+          projectId: selectedProjectId,
+          deliveryNo,
+          name: f.name,
+          originalName: f.name,
+          size: f.size,
+          mime: f.type || "",
+          dataUrl,
+          uploadedBy: uid,
+          uploadedAt: nowISO()
+        });
+      }
 
       saveDB(db);
-      toast("납품자료 바꿔치기(교체) 완료");
-      replaceTargetId = "";
-      fileInput.value = "";
-      rerenderList();
-      return;
+      toast("업로드 완료");
+      render();
+    }catch(e){
+      console.error(e);
+      toast("업로드 실패(용량 제한 가능). 파일을 줄이거나 분할하세요.");
     }
-
-    // 신규 업로드
-    db.deliveryFiles.unshift({
-      fileId: uuid(),
-      projectId: selectedProjectId,
-      deliveryNo,
-      originalName: file.name,
-      mime: file.type || "",
-      size: file.size || 0,
-      dataUrl,
-      uploadedAt: nowISO(),
-      uploadedBy: uid,
-      uploadedByName: me?.name || uid
-    });
-
-    saveDB(db);
-    toast("납품자료 업로드 완료");
-    replaceTargetId = "";
-    fileInput.value = "";
-    rerenderList();
   });
 
-  const top = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;" },
-    el("div", { style:"font-weight:1100;" }, "업로드"),
-    el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:6px;" },
-      "이 카테고리는 승인 없이 사용 가능합니다."
-    ),
-    el("div", { style:"display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;" },
-      projectBox,
-      deliveryNoInput,
-      fileInput,
-      replaceLabel
-    ),
-    el("div", { style:"display:flex;justify-content:flex-end;margin-top:10px;" },
-      uploadBtn
+  const recent = (db.deliveryFiles||[])
+    .slice()
+    .sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||""))
+    .slice(0, 30);
+
+  const recentCard = el("div", { class:"card2", style:"padding:12px 14px;margin-top:12px;" },
+    el("div", { style:"font-weight:1100;margin-bottom:8px;" }, "업로드 내역(최대 30건)"),
+    recent.length
+      ? el("div", { class:"boardList2" },
+          ...recent.map(f=>{
+            const pLabel = projLabel(db, f.projectId);
+            const dt = (f.uploadedAt || "").slice(0,10) || "-";
+            const title = `${dt} · ${f.deliveryNo || "-"}차 · ${f.originalName || f.name || "파일"}`;
+
+            const delBtn = el("button", {
+              class:"btn2 ghost2",
+              onclick:()=>{
+                if (!confirm("이 파일을 삭제할까요?")) return;
+                db.deliveryFiles = (db.deliveryFiles||[]).filter(x => x.deliveryId !== f.deliveryId);
+                saveDB(db);
+                toast("삭제 완료");
+                render();
+              }
+            }, "삭제");
+
+            return el("div", { class:"boardRow2" },
+              el("div", { class:"boardTitle2" }, title),
+              el("div", { class:"boardMeta2" }, `${pLabel} · 업로더: ${userById(db, f.uploadedBy)?.name || f.uploadedBy || "-"}`),
+              el("div", { style:"display:flex;justify-content:flex-end;" }, delBtn)
+            );
+          })
+        )
+      : el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "업로드된 납품자료가 없습니다.")
+  );
+
+  view.appendChild(
+    el("div", { class:"card2", style:"padding:12px 14px;" },
+      el("div", { style:"font-weight:1100;margin-bottom:10px;" }, "납품자료 업로드"),
+      el("div", { style:"display:grid;grid-template-columns:1fr;gap:10px;" },
+        projectBox,
+        deliveryNoInput,
+        fileInput
+      ),
+      el("div", { style:"display:flex;justify-content:flex-end;margin-top:10px;" },
+        uploadBtn
+      ),
+      hint
     )
   );
 
-  const listCard = el("div", { class:"card2", style:"padding:0;" });
-
-  view.appendChild(top);
-  view.appendChild(listCard);
-
-  rerenderList();
+  view.appendChild(recentCard);
 }
+
 
 
 
