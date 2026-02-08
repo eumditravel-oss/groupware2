@@ -2131,7 +2131,27 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
     renderView(db);
   }
 
-  function boot(){
+  function boot(){{
+  // ✅ 모달을 body 직속으로 강제 이동 (z-index 역전/transform 컨텍스트 문제 해결)
+  const modal = $("#modal2");
+  if (modal && modal.parentElement !== document.body){
+    document.body.appendChild(modal);
+  }
+
+  $("#btnClose")?.addEventListener("click", ()=>{
+    if (window.opener) window.close();
+    else location.href = "./index.html";
+  });
+
+  $("#modal2Close")?.addEventListener("click", modalClose);
+  $("#modal2")?.addEventListener("click", (e)=>{ if (e.target === $("#modal2")) modalClose(); });
+
+  window.addEventListener("hashchange", render);
+
+  if (!location.hash) setHash("home");
+  render();
+}
+
     $("#btnClose")?.addEventListener("click", ()=>{
       if (window.opener) window.close();
       else location.href = "./index.html";
