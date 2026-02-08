@@ -130,6 +130,7 @@ function ensureApprovalShape(log){
       if (!Array.isArray(db.tasks)) db.tasks = [];
       if (!Array.isArray(db.messages)) db.messages = [];
       if (!Array.isArray(db.approvals)) db.approvals = [];
+      if (!Array.isArray(db.projectPM)) db.projectPM = [];
       // ✅ 게시판 데이터(신설)
       if (!db.boards || typeof db.boards !== "object") db.boards = {};
       return db;
@@ -153,6 +154,7 @@ function ensureApprovalShape(log){
         { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
       ],
       messages: [],
+      projectPM: [],
       // ✅ 게시판 시드
       boards: {
         "work-standards": [
@@ -237,16 +239,18 @@ function ensureApprovalShape(log){
  * Menu Model (홈화면=대시보드)
  ***********************/
 const MENU = [
-  // ✅ 홈화면 = 대시보드(단일 항목)
   { key:"home", label:"홈화면", kind:"single", type:"route" },
 
-  // ✅ 이하 대분류(그룹) + 하위
   {
     groupId: "work",
     label: "업무관리",
     kind: "group",
     items: [
       { key:"work-project", label:"프로젝트 작성", type:"route" },
+
+      // ✅ 추가(프로젝트 작성 하단 기능과 연결될 PM지정 화면)
+      { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
+
       { key:"work-standards", label:"건설사별 기준서", type:"board" },
       { key:"work-log", label:"업무일지", type:"route" },
       { key:"work-approve", label:"업무일지 승인", type:"route" },
@@ -254,6 +258,7 @@ const MENU = [
       { key:"work-schedule", label:"종합 공정관리", type:"route" }
     ]
   },
+
   {
     groupId: "mgmt",
     label: "경영지원팀",
@@ -263,9 +268,11 @@ const MENU = [
       { key:"mgmt-pt", label:"PT자료 관리", type:"board" }
     ]
   },
+
+  // ✅ "구조팀" → "구조ㆍBIM팀"
   {
     groupId: "struct",
-    label: "구조팀",
+    label: "구조ㆍBIM팀",
     kind: "group",
     items: [
       { key:"struct-checklist", label:"프로젝트별 체크리스트", type:"route" },
@@ -275,6 +282,7 @@ const MENU = [
       { key:"struct-fin", label:"철골ㆍ철콘산출(FIN)", type:"link", url:"https://eumditravel-oss.github.io/FIN2/" }
     ]
   },
+
   {
     groupId: "civil",
     label: "토목ㆍ조경팀",
@@ -298,6 +306,7 @@ const MENU = [
     ]
   }
 ];
+
 
 // ✅ 그룹 기본 펼침 상태
 const DEFAULT_OPEN_GROUPS = new Set(["work"]);
@@ -409,6 +418,59 @@ function renderSide2(db){
     host.appendChild(head);
     host.appendChild(list);
   });
+}
+
+
+  /***********************
+ * Project PM (신설)
+ ***********************/
+const PM_PARTS = [
+  { key:"structBim", label:"구조ㆍBIM" },
+  { key:"civilLandscape", label:"토목ㆍ조경" },
+  { key:"finish", label:"마감" }
+];
+
+function projectYearFromProject(p){
+  const s = (p?.startDate || "").slice(0,4);
+  if (/^\d{4}$/.test(s)) return s;
+  const e = (p?.endDate || "").slice(0,4);
+  if (/^\d{4}$/.test(e)) return e;
+  const code = String(p?.projectCode || p?.projectId || "").slice(0,4);
+  if (/^\d{4}$/.test(code)) return code;
+  return "";
+}
+
+function ensurePMShape(rec){
+  if (!rec || typeof rec !== "object") return null;
+  if (typeof rec.year !== "string") rec.year = "";
+  if (typeof rec.projectId !== "string") rec.projectId = "";
+  if (!rec.parts || typeof rec.parts !== "object") rec.parts = {};
+  if (typeof rec.updatedAt !== "string") rec.updatedAt = "";
+  if (typeof rec.updatedBy !== "string") rec.updatedBy = "";
+  return rec;
+}
+
+function getPMRecord(db, year, projectId){
+  db.projectPM = Array.isArray(db.projectPM) ? db.projectPM : [];
+  return db.projectPM.map(ensurePMShape).find(x => x.year === year && x.projectId === projectId) || null;
+}
+
+function setPMForParts(db, year, projectId, partKeys, userId, updaterId){
+  db.projectPM = Array.isArray(db.projectPM) ? db.projectPM : [];
+  let rec = getPMRecord(db, year, projectId);
+  if (!rec){
+    rec = { pmId: uuid(), year, projectId, parts:{}, updatedAt:"", updatedBy:"" };
+    db.projectPM.unshift(rec);
+  }
+  partKeys.forEach(k => { rec.parts[k] = userId; });
+  rec.updatedAt = nowISO();
+  rec.updatedBy = updaterId || "";
+  return rec;
+}
+
+function userNameById(db, uid){
+  const u = (db.users||[]).find(x => x.userId === uid);
+  return u?.name || uid || "-";
 }
 
 
@@ -543,88 +605,127 @@ function computeProjectTotalHours(db, projectId){
 
 
   function viewHome(db){
-    const view = $("#view2");
-    view.innerHTML = "";
-    setRouteTitle("홈 화면 · 대시보드");
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("홈 화면 · 대시보드");
 
-    const k = computeKpis(db);
+  /***********************
+   * KPI (상단 4개)
+   ***********************/
+  const k = computeKpis(db);
 
-const kpiGrid = el("div", { class:"kpiGrid" },
-  kpiCard("승인대기 업무일지", k.approvalsWait, ""),
-  kpiCard("이 달 진행중 프로젝트", k.inProgressProjects, ""),
-  kpiCard("이 달 진행완료 프로젝트", k.doneProjects, ""),
-  kpiCard("다가오는 납품일정", k.upcoming, "7일 이내")
-);
+  const kpiGrid = el("div", { class:"kpiGrid" },
+    kpiCard("승인대기 업무일지", k.approvalsWait, ""),
+    kpiCard("이 달 진행중 프로젝트", k.inProgressProjects, ""),
+    kpiCard("이 달 진행완료 프로젝트", k.doneProjects, ""),
+    kpiCard("다가오는 납품일정", k.upcoming, "7일 이내")
+  );
 
+  /***********************
+   * 홈 선택 상태 (PM 선택)
+   ***********************/
+  const LS_PM_SEL = "APP2_HOME_PM_SELECTED";
+  let selectedPid = localStorage.getItem(LS_PM_SEL) || "";
 
-    const files = Array.isArray(db.sharedFiles) ? db.sharedFiles : [];
-    const filesTable = el("div", { class:"card2", style:"padding:0;" },
-      el("div", { class:"card2-title", style:"display:flex;align-items:center;justify-content:space-between;" },
-        el("div", {}, "작업 파일 공유"),
-        el("button", { class:"btn2 ghost2", onclick:()=>toast("추후 서버 업로드 연동 예정") }, "더보기")
-      ),
-      el("div", { class:"tableWrap" },
-        el("table", { class:"tbl2" },
-          el("thead", {},
-            el("tr", {},
-              el("th", {}, "파일명"),
-              el("th", { class:"w120" }, "파일크기"),
-              el("th", { class:"w120" }, "등록일"),
-              el("th", { class:"w120" }, "수정일"),
-              el("th", { class:"w180" }, "업로드"),
-              el("th", { class:"w120" }, "")
+  const uid = getUserId(db);
+  const me = userById(db, uid);
+
+  /***********************
+   * 카드 1: 배정받은 현재 프로젝트 관리(PM)
+   ***********************/
+  const myPMProjects = (db.projectPM || [])
+    .filter(r => Object.values(r.parts || {}).includes(uid))
+    .map(r => projById(db, r.projectId))
+    .filter(Boolean);
+
+  const pmList = myPMProjects.length
+    ? el("div", { class:"list2" },
+        ...myPMProjects.map(p=>{
+          const active = p.projectId === selectedPid;
+          return el("button", {
+            class:`wtProjItem2 ${active ? "active" : ""}`,
+            onclick:()=>{
+              localStorage.setItem(LS_PM_SEL, p.projectId);
+              render(); // 홈 다시 그림
+            }
+          },
+            el("div", { class:"wtProjTitle2" },
+              `${p.projectCode || p.projectId} (${p.projectName || ""})`
             )
-          ),
-          el("tbody", {},
-            ...(files.slice(0,5).map(f=>{
-              const actions = el("div", { class:"rowActions" },
-                el("button", { class:"iconBtn", title:"보기", onclick:()=>toast("보기(placeholder)") }, "🔍"),
-                el("button", { class:"iconBtn", title:"다운", onclick:()=>toast("다운(placeholder)") }, "⬇️"),
-                el("button", { class:"iconBtn", title:"공유", onclick:()=>toast("공유(placeholder)") }, "🔗")
-              );
-              return el("tr", {},
-                el("td", { class:"fileName" }, f.name || "-"),
-                el("td", { class:"mutedCell" }, f.size || "-"),
-                el("td", { class:"mutedCell" }, f.createdAt || "-"),
-                el("td", { class:"mutedCell" }, f.updatedAt || "-"),
-                el("td", { class:"mutedCell" }, f.uploader || "-"),
-                el("td", {}, actions)
-              );
-            }))
+          );
+        })
+      )
+    : el("div", { class:"wtEmpty2" }, "배정된 PM 프로젝트가 없습니다.");
+
+  const pmCard = el("div", { class:"card2", style:"padding:0;" },
+    el("div", { class:"card2-title" }, "배정받은 현재 프로젝트 관리(PM)"),
+    pmList
+  );
+
+  /***********************
+   * 카드 2: 작업인원 공정률
+   * (업무일지 승인 비율 기준)
+   ***********************/
+  function calcWorkerProgress(projectId){
+    const rows = {};
+    for (const l of (db.logs || [])){
+      if (l.projectId !== projectId) continue;
+      const w = l.writerId || "-";
+      if (!rows[w]) rows[w] = { total:0, approved:0 };
+      rows[w].total += Number(l.hours || 0);
+      if (l.status === "approved"){
+        rows[w].approved += Number(l.hours || 0);
+      }
+    }
+    return Object.entries(rows).map(([uid,v])=>{
+      const pct = v.total > 0 ? Math.round((v.approved / v.total) * 100) : 0;
+      return {
+        uid,
+        name: userById(db, uid)?.name || uid,
+        pct
+      };
+    });
+  }
+
+  let progressBody;
+  if (!selectedPid){
+    progressBody = el("div", { class:"wtEmpty2" }, "좌측에서 프로젝트를 선택하세요.");
+  } else {
+    const rows = calcWorkerProgress(selectedPid);
+    progressBody = rows.length
+      ? el("div", { class:"list2" },
+          ...rows.map(r=>
+            el("div", { class:"progressRow" },
+              el("div", { class:"avatar" }, "👤"),
+              el("div", { class:"pCol" },
+                el("div", { class:"pTop" },
+                  el("div", { class:"pTitle" }, r.name),
+                  el("div", { class:"tag" }, "승인율")
+                ),
+                el("div", { class:"bar" },
+                  el("div", { class:"barFill", style:`width:${r.pct}%;` })
+                )
+              ),
+              el("div", { class:"pPct" }, `${r.pct}%`)
+            )
           )
         )
-      )
-    );
-
-    const tasks = Array.isArray(db.tasks) ? db.tasks : [];
-    const progressCard = el("div", { class:"card2", style:"padding:0;" },
-      el("div", { class:"card2-title" }, "개별 진행 상황"),
-      el("div", { class:"list2" },
-        ...(tasks.slice(0,6).map(t=>{
-          const pct = clamp(Number(t.progress||0),0,100);
-          const statusCls = (t.status==="지연") ? "tag danger" : (t.status==="완료" ? "tag ok" : "tag");
-          return el("div", { class:"progressRow" },
-            el("div", { class:"avatar" }, "👤"),
-            el("div", { class:"pCol" },
-              el("div", { class:"pTop" },
-                el("div", { class:"pTitle" }, t.title || "업무"),
-                el("div", { class: statusCls }, t.status || "진행")
-              ),
-              el("div", { class:"bar" },
-                el("div", { class:"barFill", style:`width:${pct}%;` })
-              ),
-              el("div", { class:"pNote" }, t.note || "")
-            ),
-            el("div", { class:"pPct" }, `${pct}%`)
-          );
-        }))
-      )
-    );
-
-    view.appendChild(kpiGrid);
-    view.appendChild(filesTable);
-    view.appendChild(progressCard);
+      : el("div", { class:"wtEmpty2" }, "해당 프로젝트의 승인된 업무일지가 없습니다.");
   }
+
+  const progressCard = el("div", { class:"card2", style:"padding:0;" },
+    el("div", { class:"card2-title" }, "작업인원 공정률"),
+    progressBody
+  );
+
+  /***********************
+   * 최종 렌더
+   ***********************/
+  view.appendChild(kpiGrid);
+  view.appendChild(pmCard);
+  view.appendChild(progressCard);
+}
+
 
   /***********************
    * 게시판(신설 폴더/탭) - 구성만 (간단 CRUD)
@@ -944,6 +1045,144 @@ function viewProjectEditor(db){
 }
 
 
+function viewPMAssign(db){
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 프로젝트 PM지정");
+
+  db.projects = Array.isArray(db.projects) ? db.projects : [];
+  db.users = Array.isArray(db.users) ? db.users : [];
+  db.projectPM = Array.isArray(db.projectPM) ? db.projectPM : [];
+
+  const uid = getUserId(db);
+
+  // 연도 옵션
+  const years = Array.from(new Set(
+    db.projects.map(p => projectYearFromProject(p)).filter(Boolean)
+  )).sort((a,b)=>b.localeCompare(a));
+
+  const yearSel = el("select", { class:"btn2" },
+    ...(years.length ? years : [String(new Date().getFullYear())]).map(y => el("option", { value:y }, `${y}년`))
+  );
+
+  const projectSel = el("select", { class:"btn2" });
+  function rebuildProjectSelect(){
+    projectSel.innerHTML = "";
+    const y = yearSel.value;
+    const list = db.projects.filter(p => projectYearFromProject(p) === y);
+    list.forEach(p=>{
+      const o = el("option", { value:p.projectId }, `${p.projectCode||p.projectId} (${p.projectName||""})`.trim());
+      projectSel.appendChild(o);
+    });
+  }
+  yearSel.addEventListener("change", rebuildProjectSelect);
+  rebuildProjectSelect();
+
+  // 파트 체크박스
+  const checks = {};
+  const partBox = el("div", { style:"display:flex;gap:14px;flex-wrap:wrap;" },
+    ...PM_PARTS.map(pt=>{
+      const cb = el("input", { type:"checkbox" });
+      checks[pt.key] = cb;
+      return el("label", { style:"display:flex;align-items:center;gap:8px;font-weight:1000;" },
+        cb, el("span", {}, pt.label)
+      );
+    })
+  );
+
+  // 담당자 드롭다운(유저)
+  const userSel = el("select", { class:"btn2" },
+    ...(db.users||[]).map(u => el("option", { value:u.userId }, `${u.name} (${ROLE_LABEL_KO[u.role]||u.role})`))
+  );
+
+  const applyBtn = el("button", {
+    class:"btn2 primary2",
+    onclick:()=>{
+      const y = yearSel.value;
+      const pid = projectSel.value;
+      const targetUid = userSel.value;
+
+      if (!y) return toast("년도를 선택해 주세요.");
+      if (!pid) return toast("프로젝트를 선택해 주세요.");
+
+      const selectedParts = PM_PARTS
+        .map(x=>x.key)
+        .filter(k => checks[k]?.checked);
+
+      if (!selectedParts.length) return toast("구조ㆍBIM / 토목ㆍ조경 / 마감 중 1개 이상 선택해 주세요.");
+
+      setPMForParts(db, y, pid, selectedParts, targetUid, uid);
+      saveDB(db);
+      toast("PM 지정 완료");
+      rerenderList();
+    }
+  }, "PM 지정");
+
+  const topCard = el("div", { class:"card2", style:"padding:12px 14px;" },
+    el("div", { style:"font-weight:1100;margin-bottom:10px;" }, "프로젝트 PM 지정"),
+    el("div", { style:"display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:10px;" },
+      yearSel, projectSel
+    ),
+    el("div", { style:"margin-bottom:10px;" }, partBox),
+    el("div", { style:"display:grid;grid-template-columns:1fr 160px;gap:10px;" },
+      userSel, applyBtn
+    ),
+    el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:10px;" },
+      "선택한 파트(구조ㆍBIM/토목ㆍ조경/마감)에 동일 담당자를 PM으로 지정합니다."
+    )
+  );
+
+  const listCard = el("div", { class:"card2", style:"padding:0;margin-top:12px;" });
+  view.appendChild(topCard);
+  view.appendChild(listCard);
+
+  function rerenderList(){
+    listCard.innerHTML = "";
+    listCard.appendChild(el("div", { class:"card2-title" }, "PM 지정 현황"));
+
+    const rows = (db.projectPM||[])
+      .map(ensurePMShape)
+      .filter(Boolean)
+      .slice(0, 200);
+
+    if (!rows.length){
+      listCard.appendChild(el("div", { class:"wtEmpty2" }, "PM 지정 데이터가 없습니다."));
+      return;
+    }
+
+    const tbl = el("table", { class:"tbl2" },
+      el("thead", {},
+        el("tr", {},
+          el("th", {}, "년도"),
+          el("th", {}, "프로젝트"),
+          el("th", {}, "구조ㆍBIM PM"),
+          el("th", {}, "토목ㆍ조경 PM"),
+          el("th", {}, "마감 PM"),
+          el("th", { class:"w180" }, "수정")
+        )
+      ),
+      el("tbody", {},
+        ...rows.map(r=>{
+          const p = projById(db, r.projectId);
+          const pname = p ? `${p.projectCode||p.projectId} (${p.projectName||""})`.trim() : r.projectId;
+
+          return el("tr", {},
+            el("td", { class:"mutedCell" }, r.year || "-"),
+            el("td", {}, pname),
+            el("td", { class:"mutedCell" }, userNameById(db, r.parts?.structBim || "")),
+            el("td", { class:"mutedCell" }, userNameById(db, r.parts?.civilLandscape || "")),
+            el("td", { class:"mutedCell" }, userNameById(db, r.parts?.finish || "")),
+            el("td", { class:"mutedCell" }, `${r.updatedAt || "-"} · ${userNameById(db, r.updatedBy || "")}`)
+          );
+        })
+      )
+    );
+
+    listCard.appendChild(el("div", { class:"tableWrap" }, tbl));
+  }
+
+  rerenderList();
+}
 
 
 
