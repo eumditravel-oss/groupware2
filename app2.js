@@ -1781,21 +1781,22 @@ for (let w=0; w<weeks.length; w++){
   if (!isFinite(minDay) || !isFinite(maxDay)) {
   // ✅ 실제 grid 첫 셀 높이 + rowGap 기반으로 빈 주도 정확히 맞춤
   const cells = Array.from(grid.querySelectorAll(".calCell2"));
-  const sampleIdx = w*7;
+  const sampleIdx = w * 7;
   const sampleCell = cells[sampleIdx] || cells[0];
-  const cells = Array.from(grid.querySelectorAll(".calCell2"));
-const sampleIdx = w*7;
-const sampleCell = cells[sampleIdx] || cells[0];
 
-const gcs = getComputedStyle(grid);
-const rowGap = __num(gcs.rowGap || gcs.gap);
+  const gcs = getComputedStyle(grid);
+  const rowGap = __num(gcs.rowGap || gcs.gap);
 
-const innerH = (overlay.__innerH != null) ? overlay.__innerH : (sampleCell ? sampleCell.offsetHeight : 120);
-overlay.appendChild(el("div", { style:`height:${innerH}px;margin-bottom:${rowGap}px;` }));
-continue;
+  const innerH = (overlay.__innerH != null)
+    ? overlay.__innerH
+    : (sampleCell ? sampleCell.offsetHeight : 120);
 
+  overlay.appendChild(
+    el("div", { style:`height:${innerH}px;margin-bottom:${rowGap}px;` })
+  );
   continue;
 }
+
 
 
   // ✅ 주 overlay block: 셀 높이와 맞춰야 함 (현재 cell min-height 120 + padding 감안)
