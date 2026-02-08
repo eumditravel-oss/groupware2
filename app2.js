@@ -176,6 +176,23 @@
   }
 
   function modalOpen(title, bodyNode){
+  // ✅ 매번 열 때도 body 직속 보장
+  const modal = $("#modal2");
+  if (modal && modal.parentElement !== document.body){
+    document.body.appendChild(modal);
+  }
+
+  $("#modal2Title").textContent = title || "";
+  const body = $("#modal2Body");
+  body.innerHTML = "";
+  if (bodyNode) body.appendChild(bodyNode);
+
+  document.body.classList.add("modalOpen2");
+  $("#modal2").classList.remove("hidden");
+}
+
+
+  function modalOpen(title, bodyNode){
   $("#modal2Title").textContent = title || "";
   const body = $("#modal2Body");
   body.innerHTML = "";
@@ -2131,8 +2148,8 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
     renderView(db);
   }
 
-  function boot(){{
-  // ✅ 모달을 body 직속으로 강제 이동 (z-index 역전/transform 컨텍스트 문제 해결)
+  function boot(){
+  // ✅ 모달을 body 직속으로 강제 이동 (stacking context 문제 원천 차단)
   const modal = $("#modal2");
   if (modal && modal.parentElement !== document.body){
     document.body.appendChild(modal);
@@ -2144,13 +2161,16 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
   });
 
   $("#modal2Close")?.addEventListener("click", modalClose);
-  $("#modal2")?.addEventListener("click", (e)=>{ if (e.target === $("#modal2")) modalClose(); });
+  $("#modal2")?.addEventListener("click", (e)=>{
+    if (e.target === $("#modal2")) modalClose();
+  });
 
   window.addEventListener("hashchange", render);
 
   if (!location.hash) setHash("home");
   render();
 }
+
 
     $("#btnClose")?.addEventListener("click", ()=>{
       if (window.opener) window.close();
