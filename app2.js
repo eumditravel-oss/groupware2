@@ -1401,6 +1401,16 @@ const topBar = el("div", { class:"card2 wtTop2" },
     const name = p.projectName || "";
     return `${code} ${name}`.trim();
   }
+
+      function projLabelForCalendar(pid){
+    // projName() 결과에서 ']' 뒤 텍스트만 사용
+    const full = projName(pid) || "";
+    const idx = full.indexOf("]");
+    if (idx >= 0 && idx < full.length - 1) return full.slice(idx + 1).trim();
+    return full.trim();
+  }
+
+    
   function userName(uid){
     return (users.find(u=>u.userId === uid)?.name) || uid || "-";
   }
@@ -1612,7 +1622,7 @@ calCard.appendChild(wrap);
         ...dayLogs.slice(0,3).map(l=>{
           const status = l.status || "";
           const cls = status === "approved" ? "ok" : "wait";
-          const text = `${projName(l.projectId)} · ${l.category||"-"}/${l.process||"-"} · ${Number(l.hours||0)}h`;
+          const text = `${projLabelForCalendar(l.projectId)} · ${l.category||"-"}/${l.process||"-"} · ${Number(l.hours||0)}h`;
           return el("div", { class:`calRibbon2 ${cls}`, title: (l.content||"").trim() }, text);
         })
       );
@@ -1651,39 +1661,7 @@ calCard.appendChild(wrap);
 wrap.appendChild(grid);
 
 
-    // =======================
-// ✅ 프로젝트 연속 Span Bar (오버레이)
-// - 같은 프로젝트가 연속된 날짜면 가로로 이어진 띠지로 표시
-// - 주(week) 경계에서는 자동으로 분절
-// =======================
-
-function hashColor(str){
-  // 간단 해시 -> HSL 고정 색
-  let h = 0;
-  for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  // 배경/글자색
-  const bg = `hsla(${hue}, 80%, 88%, 0.95)`;
-  const ink = `hsl(${hue}, 55%, 28%)`;
-  return { bg, ink };
-}
-
-function buildPresenceByProject(y, m){
-  // projectId -> Set(YYYY-MM-DD)
-  const mp = new Map();
-
-  for (const l of logs){
-    if (!isIncludedStatus(l.status)) continue;
-    const p = parseYMD(l.date);
-    if (!p) continue;
-    if (p.y !== y || p.mo !== m) continue;
-
-    const pid = l.projectId || "-";
-    if (!mp.has(pid)) mp.set(pid, new Set());
-    mp.get(pid).add(l.date);
-  }
-  return mp;
-}
+    
 
 function dayIndexInMonth(y,m,day){ return day; } // 1~daysInMonth
 
