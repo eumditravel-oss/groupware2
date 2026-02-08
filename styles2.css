@@ -1283,3 +1283,22 @@ body, .layout2, .view2, .card2{
   }
 }
 
+/* ✅ Sidebar Logo (app2.html: .logo3 / .logoImg3) */
+.logo3{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+
+  padding: 0 6px;        /* 좌우만 약간 */
+  margin: 0 0 6px 0;     /* ✅ 로고-메뉴 간격 (여기만 조절) */
+}
+
+.logoImg3{
+  display:block;         /* ✅ img 아래 여백 제거 */
+  height: 44px;          /* 로고 높이 */
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+
