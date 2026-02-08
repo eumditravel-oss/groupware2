@@ -1197,3 +1197,17 @@ body.modalOpen2 .calOverlay2{
   z-index: 999999; /* ✅ 무조건 최상단 */
 }
 
+/* 일정(띠지/리본) 반투명 제거 */
+.calRibbon2 { opacity: 1 !important; }
+.calRibbons2 { opacity: 1 !important; }
+.calCell2.has .calRibbon2 { opacity: 1 !important; }
+
+/* 연속 띠지(Span)도 확실히 진하게 */
+.calSpan2 { opacity: 1 !important; }
+
+
+.calLane2 { width: 100%; }
+.calSpan2 { height: 24px; line-height: 24px; }
+
+
+
