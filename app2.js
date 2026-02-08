@@ -951,134 +951,332 @@ function viewProjectEditor(db){
   }
 
   function viewLog(db){
-    const view = $("#view2");
-    view.innerHTML = "";
-    setRouteTitle("업무관리 · 업무일지");
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 업무일지");
 
-    const uid = getUserId(db);
-    const dateInput = el("input", { class:"btn2", type:"date", value: todayISO() });
+  const uid = getUserId(db);
+  const me = userById(db, uid);
 
-    let entries = [ makeEmptyEntry(db) ];
-    const entriesHost = el("div", { class:"view2" });
+  const dateInput = el("input", { class:"btn2", type:"date", value: todayISO() });
 
-    function rerenderEntries(){
-      entriesHost.innerHTML = "";
-      entries.forEach((ent, idx) => entriesHost.appendChild(renderEntryCard(ent, idx)));
+  // ✅ 편집 모드 상태
+  let editing = null; 
+  // editing = { date:"YYYY-MM-DD", logIds:[...], status:"submitted|rejected" }
+
+  let entries = [ makeEmptyEntry(db) ];
+  const entriesHost = el("div", { class:"view2" });
+
+  function myLogsByDate(date){
+    db.logs = Array.isArray(db.logs) ? db.logs : [];
+    return db.logs
+      .filter(l => l.writerId === uid && l.date === date)
+      .sort((a,b)=> (a.submittedAt||"").localeCompare(b.submittedAt||""));
+  }
+
+  function canEditStatus(status){
+    return status === "submitted" || status === "rejected";
+  }
+
+  function resetToNew(){
+    editing = null;
+    entries = [ makeEmptyEntry(db) ];
+    rerenderHeader();
+    rerenderEntries();
+  }
+
+  function loadForEdit(){
+    const date = dateInput.value;
+    if (!date) return toast("날짜를 선택해 주세요.");
+
+    const list = myLogsByDate(date);
+    if (!list.length){
+      return toast("해당 날짜에 작성된 업무일지가 없습니다.");
     }
 
-    function renderEntryCard(ent, idx){
-      const projectSel = buildProjectSelect(db, ent.projectId, v => ent.projectId = v);
-
-      const hours = el("input", {
-  class:"btn2",
-  type:"number",
-  min:"0",
-  step:"0.5",                 // 0.5시간 단위 (원하면 0.25 가능)
-  placeholder:"시간",
-  value: ent.hours ?? 1,
-  oninput:(e)=> ent.hours = Math.max(0, Number(e.target.value||0))
-});
-
-
-      const catSel = buildCategorySelect(ent.category, (v)=>{
-        ent.category = v;
-        ent.process = PROCESS_MASTER[v][0];
-        rerenderEntries();
-      });
-      const procSel = buildProcessSelect(ent.category, ent.process, (v)=> ent.process = v);
-
-      const content = el("textarea", {
-        class:"ta2",
-        placeholder:"작업내용을 입력하세요",
-        oninput:(e)=> ent.content = e.target.value
-      }, ent.content || "");
-
-      const delBtn = el("button", {
-        class:"btn2 ghost2",
-        onclick:()=>{
-          if (entries.length <= 1) return toast("최소 1개 항목은 필요합니다.");
-          entries.splice(idx,1);
-          rerenderEntries();
-        }
-      }, "삭제");
-
-      return el("div", { class:"card2", style:"padding:12px 14px;" },
-        el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
-          el("div", { style:"font-weight:1100;" }, `업무 항목 ${idx+1}`),
-          delBtn
-        ),
-        el("div", { style:"display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;" },
-    projectSel, hours
-  ),
-        el("div", { style:"display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:10px;" },
-          catSel, procSel
-        ),
-        content
-      );
+    // ✅ 승인된 건이 포함이면 수정 불가
+    const hasApproved = list.some(x => x.status === "approved");
+    if (hasApproved){
+      return toast("승인 완료된 업무일지는 수정할 수 없습니다.");
     }
 
-    const addBtn = el("button", { class:"btn2", onclick:()=>{ entries.push(makeEmptyEntry(db)); rerenderEntries(); } }, "+ 업무 항목 추가");
+    // ✅ 수정 가능한 상태만 남김 (submitted/rejected)
+    const editable = list.filter(x => canEditStatus(x.status));
+    if (!editable.length){
+      return toast("수정 가능한 업무일지가 없습니다.");
+    }
 
-    const submitBtn = el("button", {
-      class:"btn2 primary2",
+    // 상태는 섞일 수 있는데, UI 표시는 대표 상태로
+    const reprStatus = editable[0].status;
+
+    editing = {
+      date,
+      logIds: editable.map(x => x.logId),
+      status: reprStatus
+    };
+
+    // entries에 기존 값 주입
+    entries = editable.map(l => ({
+      projectId: l.projectId,
+      category: l.category || "구조",
+      process: l.process || (PROCESS_MASTER[l.category || "구조"]?.[0] || ""),
+      hours: Number(l.hours || 0) || 1,
+      content: l.content || ""
+    }));
+
+    // 최소 1개 보장
+    if (!entries.length) entries = [ makeEmptyEntry(db) ];
+
+    rerenderHeader();
+    rerenderEntries();
+    toast("기존 업무일지를 불러왔습니다. 수정 후 저장하세요.");
+  }
+
+  function rerenderEntries(){
+    entriesHost.innerHTML = "";
+    entries.forEach((ent, idx) => entriesHost.appendChild(renderEntryCard(ent, idx)));
+  }
+
+  function renderEntryCard(ent, idx){
+    const projectSel = buildProjectSelect(db, ent.projectId, v => ent.projectId = v);
+
+    const hours = el("input", {
+      class:"btn2",
+      type:"number",
+      min:"0",
+      step:"0.5",
+      placeholder:"시간",
+      value: ent.hours ?? 1,
+      oninput:(e)=> ent.hours = Math.max(0, Number(e.target.value||0))
+    });
+
+    const catSel = buildCategorySelect(ent.category, (v)=>{
+      ent.category = v;
+      ent.process = PROCESS_MASTER[v][0];
+      rerenderEntries();
+    });
+
+    const procSel = buildProcessSelect(ent.category, ent.process, (v)=> ent.process = v);
+
+    const content = el("textarea", {
+      class:"ta2",
+      placeholder:"작업내용을 입력하세요",
+      oninput:(e)=> ent.content = e.target.value
+    }, ent.content || "");
+
+    const delBtn = el("button", {
+      class:"btn2 ghost2",
       onclick:()=>{
-        const date = dateInput.value;
-        if (!date) return toast("날짜를 선택해 주세요.");
+        if (entries.length <= 1) return toast("최소 1개 항목은 필요합니다.");
+        entries.splice(idx,1);
+        rerenderEntries();
+      }
+    }, "삭제");
 
-        for (let i=0;i<entries.length;i++){
-          const e = entries[i];
-          if (!e.projectId) return toast(`업무 항목 ${i+1}: 프로젝트를 선택해 주세요.`);
-          if (!e.content || !e.content.trim()) return toast(`업무 항목 ${i+1}: 작업내용을 입력해 주세요.`);
-          if (!(e.hours > 0))
-  return toast(`업무 항목 ${i+1}: 투입시간(시간)을 입력해 주세요.`);
+    return el("div", { class:"card2", style:"padding:12px 14px;" },
+      el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
+        el("div", { style:"font-weight:1100;" }, `업무 항목 ${idx+1}`),
+        delBtn
+      ),
+      el("div", { style:"display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;" },
+        projectSel, hours
+      ),
+      el("div", { style:"display:grid;grid-template-columns:160px 1fr;gap:10px;margin-bottom:10px;" },
+        catSel, procSel
+      ),
+      content
+    );
+  }
 
+  const addBtn = el("button", {
+    class:"btn2",
+    onclick:()=>{ entries.push(makeEmptyEntry(db)); rerenderEntries(); }
+  }, "+ 업무 항목 추가");
+
+  // ✅ 불러오기/초기화 버튼(수정 UI)
+  const loadBtn = el("button", {
+    class:"btn2 ghost2",
+    onclick: loadForEdit
+  }, "기존 불러오기");
+
+  const resetBtn = el("button", {
+    class:"btn2 ghost2",
+    onclick:()=>{
+      if (editing && !confirm("수정 모드를 종료하고 새로 작성할까요?")) return;
+      resetToNew();
+    }
+  }, "새로작성");
+
+  // 헤더(상태표시) 영역
+  const modeBadge = el("div", { style:"font-weight:1000;font-size:12px;color:var(--muted);" });
+
+  function rerenderHeader(){
+    if (!editing){
+      modeBadge.textContent = "새 업무일지 작성 모드";
+    } else {
+      const st = editing.status === "rejected" ? "반려(수정 후 재제출)" : "제출됨(수정)";
+      modeBadge.textContent = `수정 모드 · ${editing.date} · ${st}`;
+    }
+  }
+
+  const submitBtn = el("button", {
+    class:"btn2 primary2",
+    onclick:()=>{
+      const date = dateInput.value;
+      if (!date) return toast("날짜를 선택해 주세요.");
+
+      for (let i=0;i<entries.length;i++){
+        const e = entries[i];
+        if (!e.projectId) return toast(`업무 항목 ${i+1}: 프로젝트를 선택해 주세요.`);
+        if (!e.content || !e.content.trim()) return toast(`업무 항목 ${i+1}: 작업내용을 입력해 주세요.`);
+        if (!(e.hours > 0)) return toast(`업무 항목 ${i+1}: 투입시간(시간)을 입력해 주세요.`);
+      }
+
+      db.logs = Array.isArray(db.logs) ? db.logs : [];
+
+      // -------------------------
+      // ✅ 수정 모드: 기존 로그 업데이트
+      // -------------------------
+      if (editing && editing.date === date){
+        const targets = editing.logIds
+          .map(id => db.logs.find(x => x.logId === id))
+          .filter(Boolean);
+
+        // 승인된 건이 새로 생겼으면 방어
+        if (targets.some(t => t.status === "approved")){
+          return toast("승인 완료된 업무일지는 수정할 수 없습니다.");
+        }
+
+        // 줄어든 경우: 초과 로그 삭제 확인
+        if (entries.length < targets.length){
+          if (!confirm(`기존 ${targets.length}건 중 ${targets.length - entries.length}건을 삭제할까요?`)) return;
+          const toDelete = targets.slice(entries.length);
+          db.logs = db.logs.filter(x => !toDelete.some(d => d.logId === x.logId));
         }
 
         const submittedAt = nowISO();
-        db.logs = Array.isArray(db.logs) ? db.logs : [];
-        for (const e of entries){
-          db.logs.push({
-            logId: uuid(),
-            date,
-            projectId: e.projectId,
-            category: e.category,
-            process: e.process,
-            content: e.content.trim(),
-            hours: Number(e.hours)||0,
-            writerId: uid,
-            status: "submitted",
-            submittedAt,
-            approvedBy: "",
-            approvedAt: "",
-            rejectedBy: "",
-            rejectedAt: "",
-            rejectReason: ""
-          });
+
+        // 업데이트(겹치는 구간)
+        const min = Math.min(entries.length, targets.length);
+        for (let i=0;i<min;i++){
+          const l = targets[i];
+          const e = entries[i];
+
+          l.projectId = e.projectId;
+          l.category  = e.category;
+          l.process   = e.process;
+          l.content   = e.content.trim();
+          l.hours     = Number(e.hours)||0;
+
+          // ✅ 반려건 수정 저장 시: 재제출 처리
+          l.status = "submitted";
+          l.submittedAt = submittedAt;
+          l.approvedBy = ""; l.approvedAt = "";
+          l.rejectedBy = ""; l.rejectedAt = ""; l.rejectReason = "";
+        }
+
+        // 추가된 항목: 새 로그 생성
+        if (entries.length > targets.length){
+          for (let i=targets.length;i<entries.length;i++){
+            const e = entries[i];
+            db.logs.push({
+              logId: uuid(),
+              date,
+              projectId: e.projectId,
+              category: e.category,
+              process: e.process,
+              content: e.content.trim(),
+              hours: Number(e.hours)||0,
+              writerId: uid,
+              status: "submitted",
+              submittedAt,
+              approvedBy: "",
+              approvedAt: "",
+              rejectedBy: "",
+              rejectedAt: "",
+              rejectReason: ""
+            });
+          }
         }
 
         saveDB(db);
-        toast("업무일지 제출 완료 (승인 대기)");
+        toast("업무일지 수정 저장 완료 (승인 대기)");
         render();
+        return;
       }
-    }, "제출하기");
 
-    view.appendChild(
-      el("div", { class:"card2", style:"padding:12px 14px;" },
-        el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
-          el("div", { style:"font-weight:1100;" }, "업무일지 작성"),
-          addBtn
-        ),
-        el("div", { style:"display:flex;gap:10px;align-items:center;margin-bottom:10px;" },
-          el("div", { style:"font-weight:900;color:var(--muted);font-size:12px;" }, "날짜"),
-          dateInput
-        ),
-        entriesHost,
-        el("div", { style:"display:flex;justify-content:flex-end;margin-top:12px;" }, submitBtn)
-      )
-    );
+      // -------------------------
+      // ✅ 새 작성 모드: 기존과 동일하게 push
+      // -------------------------
+      const submittedAt = nowISO();
+      for (const e of entries){
+        db.logs.push({
+          logId: uuid(),
+          date,
+          projectId: e.projectId,
+          category: e.category,
+          process: e.process,
+          content: e.content.trim(),
+          hours: Number(e.hours)||0,
+          writerId: uid,
+          status: "submitted",
+          submittedAt,
+          approvedBy: "",
+          approvedAt: "",
+          rejectedBy: "",
+          rejectedAt: "",
+          rejectReason: ""
+        });
+      }
 
-    rerenderEntries();
+      saveDB(db);
+      toast("업무일지 제출 완료 (승인 대기)");
+      render();
+    }
+  }, "제출하기");
+
+  function rerenderSubmitLabel(){
+    submitBtn.textContent = editing ? "수정 저장" : "제출하기";
   }
+
+  // date 변경 시: 수정모드 유지 여부 결정(날짜가 바뀌면 신규작성 모드로 자동 전환)
+  dateInput.addEventListener("change", ()=>{
+    if (editing && editing.date !== dateInput.value){
+      editing = null;
+      rerenderHeader();
+      rerenderSubmitLabel();
+    }
+  });
+
+  // 화면 구성
+  const headerRow = el("div", { style:"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;" },
+    el("div", { style:"font-weight:1100;" }, "업무일지 작성"),
+    el("div", { style:"display:flex;gap:8px;align-items:center;" },
+      loadBtn, resetBtn, addBtn
+    )
+  );
+
+  const dateRow = el("div", { style:"display:flex;gap:10px;align-items:center;margin-bottom:10px;" },
+    el("div", { style:"font-weight:900;color:var(--muted);font-size:12px;" }, "날짜"),
+    dateInput,
+    el("div", { style:"margin-left:auto;" }, modeBadge)
+  );
+
+  view.appendChild(
+    el("div", { class:"card2", style:"padding:12px 14px;" },
+      headerRow,
+      dateRow,
+      entriesHost,
+      el("div", { style:"display:flex;justify-content:flex-end;margin-top:12px;" },
+        (rerenderSubmitLabel(), submitBtn)
+      )
+    )
+  );
+
+  rerenderHeader();
+  rerenderEntries();
+}
+
 
   function viewApprove(db){
     const view = $("#view2");
