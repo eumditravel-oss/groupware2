@@ -123,56 +123,72 @@ function ensureApprovalShape(log){
     return item;
   }
 
-  function ensureDB(){
-    const db = loadDB();
-    if (db && typeof db === "object") {
-      if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
-      if (!Array.isArray(db.tasks)) db.tasks = [];
-      if (!Array.isArray(db.messages)) db.messages = [];
-      if (!Array.isArray(db.approvals)) db.approvals = [];
-      if (!Array.isArray(db.projectPM)) db.projectPM = [];
-      // ✅ 게시판 데이터(신설)
-      if (!db.boards || typeof db.boards !== "object") db.boards = {};
-      return db;
-    }
+  /* =========================
+ * 1) ensureDB()에 데이터 구조 추가
+ *  - 위치: ensureDB() 내부의 "if (db && typeof db === 'object')" 블록
+ * ========================= */
+function ensureDB(){
+  const db = loadDB();
+  if (db && typeof db === "object") {
+    if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
+    if (!Array.isArray(db.tasks)) db.tasks = [];
+    if (!Array.isArray(db.messages)) db.messages = [];
+    if (!Array.isArray(db.approvals)) db.approvals = [];
+    if (!Array.isArray(db.projectPM)) db.projectPM = [];
+    // ✅ 게시판 데이터(신설)
+    if (!db.boards || typeof db.boards !== "object") db.boards = {};
 
-    const seed = {
-      meta:{ version:"0.5", createdAt: nowISO() },
-      users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
-      projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
-      logs: [],
-      checklists: [],
-      sharedFiles: [
-        { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
-        { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
-        { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
-      ],
-      tasks: [
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
-        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
-      ],
-      messages: [],
-      projectPM: [],
-      // ✅ 게시판 시드
-      boards: {
-        "work-standards": [
-          { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
-        ],
-        "mgmt-plan": [],
-        "mgmt-pt": [],
-        "struct-estimate-write": [],
-        "struct-estimate-manage": [],
-        "civil-estimate-write": [],
-        "civil-estimate-manage": [],
-        "finish-estimate-write": [],
-        "finish-estimate-manage": []
-      }
-    };
-    localStorage.setItem(LS_KEY, JSON.stringify(seed));
-    return seed;
+    /* ✅ [ADD] 납품 데이터/권한 */
+    if (!Array.isArray(db.deliveryFiles)) db.deliveryFiles = [];             // 업로드된 납품파일
+    if (!Array.isArray(db.deliveryAccess)) db.deliveryAccess = [];           // 일일 열람 권한(승인 완료)
+    if (!Array.isArray(db.deliveryAccessRequests)) db.deliveryAccessRequests = []; // 권한 요청(대기)
+
+    return db;
   }
+
+  const seed = {
+    meta:{ version:"0.5", createdAt: nowISO() },
+    users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
+    projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
+    logs: [],
+    checklists: [],
+    sharedFiles: [
+      { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+      { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+      { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
+    ],
+    tasks: [
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
+      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
+    ],
+    messages: [],
+    projectPM: [],
+    // ✅ 게시판 시드
+    boards: {
+      "work-standards": [
+        { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
+      ],
+      "mgmt-plan": [],
+      "mgmt-pt": [],
+      "struct-estimate-write": [],
+      "struct-estimate-manage": [],
+      "civil-estimate-write": [],
+      "civil-estimate-manage": [],
+      "finish-estimate-write": [],
+      "finish-estimate-manage": []
+    },
+
+    /* ✅ [ADD] 납품 데이터/권한 (seed) */
+    deliveryFiles: [],
+    deliveryAccess: [],
+    deliveryAccessRequests: []
+  };
+  localStorage.setItem(LS_KEY, JSON.stringify(seed));
+  return seed;
+}
+
 
   function getUserId(db){
     const saved = localStorage.getItem(LS_USER);
@@ -241,23 +257,29 @@ function ensureApprovalShape(log){
 const MENU = [
   { key:"home", label:"홈화면", kind:"single", type:"route" },
 
-  {
-    groupId: "work",
-    label: "업무관리",
-    kind: "group",
-    items: [
-      { key:"work-project", label:"프로젝트 작성", type:"route" },
+  /* =========================
+ * 2) MENU에 카테고리 2개 추가
+ *  - 위치: MENU 상수의 "work" 그룹 items 안
+ *  - 요구: "종합 공정관리" 밑에 배치
+ * ========================= */
+{
+  groupId: "work",
+  label: "업무관리",
+  kind: "group",
+  items: [
+    { key:"work-project", label:"프로젝트 작성", type:"route" },
+    { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
+    { key:"work-standards", label:"건설사별 기준서", type:"board" },
+    { key:"work-log", label:"업무일지", type:"route" },
+    { key:"work-approve", label:"업무일지 승인", type:"route" },
+    { key:"work-time", label:"프로젝트 소요시간", type:"route" },
+    { key:"work-schedule", label:"종합 공정관리", type:"route" },
 
-      // ✅ 추가(프로젝트 작성 하단 기능과 연결될 PM지정 화면)
-      { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
-
-      { key:"work-standards", label:"건설사별 기준서", type:"board" },
-      { key:"work-log", label:"업무일지", type:"route" },
-      { key:"work-approve", label:"업무일지 승인", type:"route" },
-      { key:"work-time", label:"프로젝트 소요시간", type:"route" },
-      { key:"work-schedule", label:"종합 공정관리", type:"route" }
-    ]
-  },
+    /* ✅ [ADD] 종합 공정관리 하위 성격 */
+    { key:"work-delivery", label:"납품 프로젝트 관리", type:"route" },
+    { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" }
+  ]
+},
 
   {
     groupId: "mgmt",
@@ -1090,10 +1112,12 @@ function viewPMAssign(db){
     return userNameById(db, v);                    // userId(기존 데이터)
   }
 
-  /***********************
-   * Popup window picker (새 창)
-   ***********************/
-  function openPickerWindow({ title, items, placeholder, onPick }){
+  /* =========================
+ * 3) 공용 팝업 프로젝트 검색창 (새 창) 유틸 추가
+ *  - 위치: DOM helpers 아래(예: toast / modalOpen 근처)
+ *  - viewPMAssign에 있던 openPickerWindow를 공용으로 꺼내 사용
+ * ========================= */
+function openPickerWindow({ title, items, placeholder, onPick }){
   const w = 560, h = 640;
   const left = Math.max(0, Math.floor((window.screenX || 0) + ((window.outerWidth || 1200) - w)/2));
   const top  = Math.max(0, Math.floor((window.screenY || 0) + ((window.outerHeight || 800) - h)/2));
@@ -1149,7 +1173,6 @@ function viewPMAssign(db){
 </body>
 </html>`;
 
-  // ✅ 핵심 수정: data URL → blob URL
   const blob = new Blob([html], { type:"text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
@@ -1173,7 +1196,6 @@ function viewPMAssign(db){
   };
   window.addEventListener("message", handler);
 
-  // 창을 그냥 닫았을 때도 URL 정리
   const timer = setInterval(()=>{
     if (win.closed){
       clearInterval(timer);
@@ -1182,6 +1204,7 @@ function viewPMAssign(db){
     }
   }, 400);
 }
+
 
 
   function escapeHtml(s){
@@ -3162,6 +3185,537 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
 }
 
 
+  /* =========================
+ * 4) 납품 권한/파일 공통 헬퍼 + 뷰 2개 구현
+ *  - 위치: 기존 뷰들(viewLog/viewApprove/...) 근처 아무 곳(추천: viewWorkCalendar 아래)
+ * ========================= */
+
+/* ---- 권한 규칙 ----
+0) 팀장(leader) 및 실장 이상(manager/director/vp/svp/ceo)은 승인 없이 열람 가능
+1) 사원(staff)은 실장(manager) 승인 시 "당일 1일" 열람 가능
+*/
+function canViewDeliveryWithoutApproval(user){
+  const r = user?.role || "staff";
+  if (r === "leader") return true;
+  return roleRank(r) >= roleRank("manager");
+}
+function hasTodayDeliveryGrant(db, userId){
+  const today = todayISO();
+  db.deliveryAccess = Array.isArray(db.deliveryAccess) ? db.deliveryAccess : [];
+  return db.deliveryAccess.some(g => g.userId === userId && g.date === today);
+}
+function ensureDeliveryShapes(db){
+  if (!Array.isArray(db.deliveryFiles)) db.deliveryFiles = [];
+  if (!Array.isArray(db.deliveryAccess)) db.deliveryAccess = [];
+  if (!Array.isArray(db.deliveryAccessRequests)) db.deliveryAccessRequests = [];
+}
+
+function projLabel(db, projectId){
+  const p = projById(db, projectId);
+  if (!p) return projectId || "-";
+  const code = p.projectCode || p.projectId || "";
+  const name = p.projectName || "";
+  return `${code} (${name})`.trim();
+}
+
+function openProjectSearchPicker(db, onPick){
+  const items = (db.projects||[]).map(p => ({
+    value: p.projectId,
+    label: projLabel(db, p.projectId)
+  }));
+  if (!items.length){
+    toast("등록된 프로젝트가 없습니다.");
+    return;
+  }
+  openPickerWindow({
+    title: "프로젝트 검색",
+    items,
+    placeholder: "코드/명칭 검색",
+    onPick:(value, label)=> onPick?.(value, label)
+  });
+}
+
+function downloadDataUrl(filename, dataUrl){
+  try{
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch{
+    toast("다운로드에 실패했습니다.");
+  }
+}
+
+/* =========================
+ * (A) 납품 프로젝트 관리 (열람/다운로드 + 권한요청/승인)
+ * ========================= */
+function viewDeliveryManage(db){
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 납품 프로젝트 관리");
+
+  ensureDeliveryShapes(db);
+
+  const uid = getUserId(db);
+  const me = userById(db, uid);
+
+  const isManagerPlus = roleRank(me?.role || "staff") >= roleRank("manager");
+  const canBypass = canViewDeliveryWithoutApproval(me);
+  const grantedToday = hasTodayDeliveryGrant(db, uid);
+  const canView = canBypass || grantedToday;
+
+  // ---- 상단 안내/권한 ----
+  const info = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;" },
+    el("div", { style:"font-weight:1100;" }, "열람/다운로드"),
+    el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:6px;line-height:1.5;" },
+      "권한 규칙: 팀장 및 실장 이상은 즉시 열람 가능. 사원은 실장 승인 시 당일 1일 열람 가능."
+    )
+  );
+
+  // ---- 권한 요청 UI (사원 전용) ----
+  const needApproval = (!canBypass && !grantedToday);
+  if (needApproval){
+    const alreadyReq = (db.deliveryAccessRequests||[]).some(r => r.userId === uid && r.date === todayISO());
+    const reqBtn = el("button", {
+      class:"btn2 primary2",
+      onclick:()=>{
+        if (alreadyReq) return toast("오늘 권한 요청이 이미 접수되었습니다.");
+        db.deliveryAccessRequests.unshift({
+          reqId: uuid(),
+          userId: uid,
+          date: todayISO(),
+          requestedAt: nowISO(),
+          status: "pending",
+          decidedBy: "",
+          decidedAt: ""
+        });
+        saveDB(db);
+        toast("권한 요청이 접수되었습니다. (실장 승인 필요)");
+        render();
+      }
+    }, alreadyReq ? "권한 요청(접수됨)" : "실장에게 권한 요청");
+
+    info.appendChild(
+      el("div", { style:"margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;" },
+        reqBtn,
+        el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" },
+          "※ 승인되면 오늘 하루 열람 가능합니다."
+        )
+      )
+    );
+  } else {
+    info.appendChild(
+      el("div", { style:"margin-top:10px;color:var(--muted);font-size:12px;font-weight:900;" },
+        canBypass ? "현재 권한: 즉시 열람 가능" : "현재 권한: 오늘자 열람 승인됨"
+      )
+    );
+  }
+
+  // ---- 실장 승인 패널 (실장 이상이면 언제든 표시) ----
+  let approvePanel = null;
+  if (isManagerPlus){
+    const pend = (db.deliveryAccessRequests||[])
+      .filter(r => r.status === "pending" && r.date === todayISO())
+      .slice(0, 50);
+
+    const rows = pend.map(r=>{
+      const u = userById(db, r.userId);
+      const name = u?.name || r.userId;
+      const role = ROLE_LABEL_KO[u?.role || "staff"] || (u?.role || "-");
+
+      const okBtn = el("button", {
+        class:"btn2 primary2",
+        onclick:()=>{
+          // 요청 승인 → 오늘 권한 부여
+          r.status = "approved";
+          r.decidedBy = uid;
+          r.decidedAt = nowISO();
+
+          // grant upsert
+          const today = todayISO();
+          db.deliveryAccess = Array.isArray(db.deliveryAccess) ? db.deliveryAccess : [];
+          const exists = db.deliveryAccess.find(g => g.userId === r.userId && g.date === today);
+          if (!exists){
+            db.deliveryAccess.unshift({
+              grantId: uuid(),
+              userId: r.userId,
+              date: today,
+              approvedBy: uid,
+              approvedAt: nowISO()
+            });
+          }
+
+          saveDB(db);
+          toast("권한 승인 완료");
+          render();
+        }
+      }, "승인");
+
+      const noBtn = el("button", {
+        class:"btn2 ghost2",
+        onclick:()=>{
+          r.status = "rejected";
+          r.decidedBy = uid;
+          r.decidedAt = nowISO();
+          saveDB(db);
+          toast("권한 반려 처리");
+          render();
+        }
+      }, "반려");
+
+      return el("div", { class:"boardRow2" },
+        el("div", { class:"boardTitle2" }, `${name} (${role})`),
+        el("div", { class:"boardMeta2" }, `${r.date} · 요청: ${r.requestedAt || "-"}`),
+        el("div", { style:"display:flex;justify-content:flex-end;gap:8px;" }, noBtn, okBtn)
+      );
+    });
+
+    approvePanel = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;" },
+      el("div", { style:"font-weight:1100;margin-bottom:8px;" }, "실장 승인(오늘 요청)"),
+      pend.length
+        ? el("div", { class:"boardList2" }, ...rows)
+        : el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "오늘 접수된 권한 요청이 없습니다.")
+    );
+  }
+
+  // ---- 본문: 프로젝트 선택 + 납품파일 선택 + 다운로드 ----
+  let selectedProjectId = "";
+  let selectedDeliveryId = "";
+
+  const projectBox = el("input", {
+    class:"btn2",
+    type:"text",
+    value:"",
+    placeholder:"프로젝트 선택(클릭)",
+    readonly:"readonly",
+    style:"cursor:pointer;"
+  });
+
+  const deliveryBox = el("input", {
+    class:"btn2",
+    type:"text",
+    value:"",
+    placeholder:"납품자료 선택(프로젝트 선택 후 클릭)",
+    readonly:"readonly",
+    style:"cursor:pointer;"
+  });
+
+  const dlBtn = el("button", { class:"btn2 primary2", disabled:"disabled" }, "다운로드받기");
+
+  function updateDlBtn(){
+    if (!selectedDeliveryId){
+      dlBtn.setAttribute("disabled","disabled");
+    } else {
+      dlBtn.removeAttribute("disabled");
+    }
+  }
+
+  function openDeliveryPicker(){
+    if (!selectedProjectId) return toast("먼저 프로젝트를 선택하세요.");
+
+    const list = (db.deliveryFiles||[])
+      .filter(f => f.projectId === selectedProjectId)
+      .slice()
+      .sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||""));
+
+    if (!list.length){
+      toast("해당 프로젝트의 납품자료가 없습니다.");
+      return;
+    }
+
+    const body = el("div", { style:"display:flex;flex-direction:column;gap:10px;min-width:320px;max-width:720px;" });
+
+    const rows = el("div", { class:"boardList2" },
+      ...list.map(f=>{
+        const dt = (f.uploadedAt || "").slice(0,10) || "-";
+        const label = `${dt} · ${f.deliveryNo || "-"}차 · ${f.originalName || f.name || "파일"}`;
+        return el("button", {
+          class:"btn2",
+          style:"text-align:left;justify-content:flex-start;",
+          onclick:()=>{
+            selectedDeliveryId = f.fileId;
+            deliveryBox.value = label;
+            updateDlBtn();
+            modalClose();
+          }
+        }, label);
+      })
+    );
+
+    body.appendChild(
+      el("div", { style:"font-weight:1100;" }, "납품파일 선택")
+    );
+    body.appendChild(
+      el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;" }, "리스트에서 1개를 선택하면 다운로드 버튼이 활성화됩니다.")
+    );
+    body.appendChild(rows);
+
+    modalOpen("납품파일 선택", body);
+  }
+
+  projectBox.addEventListener("click", ()=>{
+    if (!canView) return toast("열람 권한이 없습니다. (실장 승인 필요)");
+    openProjectSearchPicker(db, (pid, label)=>{
+      selectedProjectId = pid;
+      projectBox.value = label || "";
+      selectedDeliveryId = "";
+      deliveryBox.value = "";
+      updateDlBtn();
+    });
+  });
+
+  deliveryBox.addEventListener("click", ()=>{
+    if (!canView) return toast("열람 권한이 없습니다. (실장 승인 필요)");
+    openDeliveryPicker();
+  });
+
+  dlBtn.addEventListener("click", ()=>{
+    if (!canView) return toast("열람 권한이 없습니다. (실장 승인 필요)");
+    const f = (db.deliveryFiles||[]).find(x => x.fileId === selectedDeliveryId);
+    if (!f) return toast("선택한 납품파일을 찾을 수 없습니다.");
+    const fn = f.originalName || `delivery_${selectedProjectId}_${f.deliveryNo||""}.bin`;
+    downloadDataUrl(fn, f.dataUrl);
+  });
+
+  const main = el("div", { class:"card2", style:"padding:12px 14px;" },
+    el("div", { style:"font-weight:1100;margin-bottom:10px;" }, "프로젝트/납품자료 선택"),
+    el("div", { style:"display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px;" },
+      projectBox,
+      deliveryBox
+    ),
+    el("div", { style:"display:flex;justify-content:flex-end;" }, dlBtn)
+  );
+
+  view.appendChild(info);
+  if (approvePanel) view.appendChild(approvePanel);
+  view.appendChild(main);
+}
+
+/* =========================
+ * (B) 납품자료 업로드 (승인 없이 사용)
+ *  - 프로젝트 검색(새 창) + n차 텍스트 + 파일 업로드
+ *  - 바꿔치기(교체): 동일 프로젝트/동일 n차가 있으면 replace 허용
+ * ========================= */
+function viewDeliveryUpload(db){
+  const view = $("#view2");
+  view.innerHTML = "";
+  setRouteTitle("업무관리 · 납품자료 업로드");
+
+  ensureDeliveryShapes(db);
+
+  const uid = getUserId(db);
+  const me = userById(db, uid);
+
+  let selectedProjectId = "";
+  let replaceTargetId = ""; // 특정 파일 레코드를 지정해 바꿔치기
+
+  const projectBox = el("input", {
+    class:"btn2",
+    type:"text",
+    value:"",
+    placeholder:"프로젝트 선택(클릭)",
+    readonly:"readonly",
+    style:"cursor:pointer;"
+  });
+
+  const deliveryNoInput = el("input", {
+    class:"btn2",
+    type:"text",
+    value:"",
+    placeholder:"몇차 납품자료인지 입력 (예: 1, 2, 3...)"
+  });
+
+  const fileInput = el("input", {
+    class:"btn2",
+    type:"file"
+  });
+
+  const replaceCb = el("input", { type:"checkbox" });
+  const replaceLabel = el("label", { style:"display:flex;align-items:center;gap:8px;font-weight:1000;" },
+    replaceCb,
+    el("span", {}, "동일 차수 존재 시 바꿔치기(교체) 허용")
+  );
+
+  const uploadBtn = el("button", { class:"btn2 primary2" }, "업로드");
+
+  function listByProject(pid){
+    return (db.deliveryFiles||[])
+      .filter(f => f.projectId === pid)
+      .slice()
+      .sort((a,b)=>(b.uploadedAt||"").localeCompare(a.uploadedAt||""));
+  }
+
+  function rerenderList(){
+    listCard.innerHTML = "";
+    listCard.appendChild(el("div", { class:"card2-title" }, "업로드된 납품자료"));
+
+    if (!selectedProjectId){
+      listCard.appendChild(el("div", { class:"wtEmpty2" }, "프로젝트를 선택하면 업로드된 납품자료 목록이 표시됩니다."));
+      return;
+    }
+
+    const rows = listByProject(selectedProjectId);
+    if (!rows.length){
+      listCard.appendChild(el("div", { class:"wtEmpty2" }, "해당 프로젝트의 납품자료가 없습니다."));
+      return;
+    }
+
+    const body = el("tbody", {},
+      ...rows.map(f=>{
+        const dt = (f.uploadedAt||"").slice(0,10) || "-";
+        const fn = f.originalName || f.name || "-";
+        const who = f.uploadedByName || f.uploadedBy || "-";
+        const repBtn = el("button", {
+          class:"btn2 ghost2",
+          onclick:()=>{
+            replaceTargetId = f.fileId;
+            deliveryNoInput.value = String(f.deliveryNo || "").trim();
+            replaceCb.checked = true;
+            toast("교체 대상이 지정되었습니다. 파일을 선택한 뒤 업로드를 누르면 바꿔치기 됩니다.");
+          }
+        }, "바꿔치기");
+
+        return el("tr", {},
+          el("td", { class:"mutedCell" }, dt),
+          el("td", {}, `${f.deliveryNo || "-"}차`),
+          el("td", {}, fn),
+          el("td", { class:"mutedCell" }, who),
+          el("td", {}, repBtn)
+        );
+      })
+    );
+
+    const tbl = el("table", { class:"tbl2" },
+      el("thead", {},
+        el("tr", {},
+          el("th", {}, "업로드일"),
+          el("th", {}, "차수"),
+          el("th", {}, "파일명"),
+          el("th", {}, "업로더"),
+          el("th", { class:"w120" }, "교체")
+        )
+      ),
+      body
+    );
+
+    listCard.appendChild(el("div", { class:"tableWrap" }, tbl));
+  }
+
+  projectBox.addEventListener("click", ()=>{
+    openProjectSearchPicker(db, (pid, label)=>{
+      selectedProjectId = pid;
+      projectBox.value = label || "";
+      replaceTargetId = "";
+      rerenderList();
+    });
+  });
+
+  function readFileAsDataUrl(file){
+    return new Promise((resolve, reject)=>{
+      const fr = new FileReader();
+      fr.onload = ()=> resolve(String(fr.result||""));
+      fr.onerror = ()=> reject(new Error("read error"));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  uploadBtn.addEventListener("click", async ()=>{
+    if (!selectedProjectId) return toast("프로젝트를 먼저 선택하세요.");
+    const deliveryNo = (deliveryNoInput.value || "").trim();
+    if (!deliveryNo) return toast("몇차 납품자료인지 입력하세요.");
+    const file = fileInput.files?.[0];
+    if (!file) return toast("업로드할 파일을 선택하세요.");
+
+    // 동일 프로젝트 + 동일 차수 존재 여부
+    const exists = (db.deliveryFiles||[]).find(f => f.projectId === selectedProjectId && String(f.deliveryNo||"") === deliveryNo);
+
+    // 바꿔치기 대상 우선
+    let target = null;
+    if (replaceTargetId){
+      target = (db.deliveryFiles||[]).find(f => f.fileId === replaceTargetId) || null;
+    } else if (exists){
+      target = exists;
+    }
+
+    if (target && !replaceCb.checked){
+      return toast("동일 차수 자료가 존재합니다. ‘바꿔치기 허용’을 체크하거나 목록에서 ‘바꿔치기’를 누르세요.");
+    }
+
+    let dataUrl = "";
+    try{
+      dataUrl = await readFileAsDataUrl(file);
+    }catch{
+      return toast("파일 읽기에 실패했습니다.");
+    }
+
+    if (target && replaceCb.checked){
+      // 교체(덮어쓰기)
+      target.originalName = file.name;
+      target.mime = file.type || "";
+      target.size = file.size || 0;
+      target.dataUrl = dataUrl;
+
+      target.uploadedAt = nowISO();
+      target.uploadedBy = uid;
+      target.uploadedByName = me?.name || uid;
+
+      saveDB(db);
+      toast("납품자료 바꿔치기(교체) 완료");
+      replaceTargetId = "";
+      fileInput.value = "";
+      rerenderList();
+      return;
+    }
+
+    // 신규 업로드
+    db.deliveryFiles.unshift({
+      fileId: uuid(),
+      projectId: selectedProjectId,
+      deliveryNo,
+      originalName: file.name,
+      mime: file.type || "",
+      size: file.size || 0,
+      dataUrl,
+      uploadedAt: nowISO(),
+      uploadedBy: uid,
+      uploadedByName: me?.name || uid
+    });
+
+    saveDB(db);
+    toast("납품자료 업로드 완료");
+    replaceTargetId = "";
+    fileInput.value = "";
+    rerenderList();
+  });
+
+  const top = el("div", { class:"card2", style:"padding:12px 14px;margin-bottom:12px;" },
+    el("div", { style:"font-weight:1100;" }, "업로드"),
+    el("div", { style:"color:var(--muted);font-size:12px;font-weight:900;margin-top:6px;" },
+      "이 카테고리는 승인 없이 사용 가능합니다."
+    ),
+    el("div", { style:"display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;" },
+      projectBox,
+      deliveryNoInput,
+      fileInput,
+      replaceLabel
+    ),
+    el("div", { style:"display:flex;justify-content:flex-end;margin-top:10px;" },
+      uploadBtn
+    )
+  );
+
+  const listCard = el("div", { class:"card2", style:"padding:0;" });
+
+  view.appendChild(top);
+  view.appendChild(listCard);
+
+  rerenderList();
+}
+
+
+
 
   function viewChecklist(db, teamLabel){
     const view = $("#view2");
@@ -3196,49 +3750,55 @@ function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverla
     );
   }
 
-  /***********************
-   * Router
-   ***********************/
-  function renderView(db){
-    const key = parseHash();
+  /* =========================
+ * 5) Router에 2개 route 연결
+ *  - 위치: renderView(db) 내부 "업무관리" 섹션
+ * ========================= */
+function renderView(db){
+  const key = parseHash();
 
-    // 홈
-    if (key === "home") return viewHome(db);
+  // 홈
+  if (key === "home") return viewHome(db);
 
-    // 업무관리
-    if (key === "work-project") return viewProjectEditor(db);   // ✅ 추가
-    if (key === "work-pm") return viewPMAssign(db);
-    if (key === "work-standards") return viewBoard(db, "work-standards", "업무관리 · 건설사별 기준서");
-    if (key === "work-log") return viewLog(db);
-    if (key === "work-approve") return viewApprove(db);
-    if (key === "work-time") return viewDashboard(db);
-    if (key === "work-schedule") return viewWorkCalendar(db);
+  // 업무관리
+  if (key === "work-project") return viewProjectEditor(db);
+  if (key === "work-pm") return viewPMAssign(db);
+  if (key === "work-standards") return viewBoard(db, "work-standards", "업무관리 · 건설사별 기준서");
+  if (key === "work-log") return viewLog(db);
+  if (key === "work-approve") return viewApprove(db);
+  if (key === "work-time") return viewDashboard(db);
+  if (key === "work-schedule") return viewWorkCalendar(db);
 
-    // 경영지원팀(게시판)
-    if (key === "mgmt-plan") return viewBoard(db, "mgmt-plan", "경영지원팀 · 기획안 제출");
-    if (key === "mgmt-pt") return viewBoard(db, "mgmt-pt", "경영지원팀 · PT자료 관리");
+  /* ✅ [ADD] */
+  if (key === "work-delivery") return viewDeliveryManage(db);
+  if (key === "work-delivery-upload") return viewDeliveryUpload(db);
 
-    // 구조팀
-    if (key === "struct-checklist") return viewChecklist(db, "구조팀");
-    if (key === "struct-checklist-list") return viewChecklistList(db, "구조팀");
-    if (key === "struct-estimate-write") return viewBoard(db, "struct-estimate-write", "구조팀 · 견적조건 작성");
-    if (key === "struct-estimate-manage") return viewBoard(db, "struct-estimate-manage", "구조팀 · 견적조건 관리");
+  // 경영지원팀(게시판)
+  if (key === "mgmt-plan") return viewBoard(db, "mgmt-plan", "경영지원팀 · 기획안 제출");
+  if (key === "mgmt-pt") return viewBoard(db, "mgmt-pt", "경영지원팀 · PT자료 관리");
 
-    // 토목ㆍ조경팀
-    if (key === "civil-checklist") return viewChecklist(db, "토목ㆍ조경팀");
-    if (key === "civil-checklist-list") return viewChecklistList(db, "토목ㆍ조경팀");
-    if (key === "civil-estimate-write") return viewBoard(db, "civil-estimate-write", "토목ㆍ조경팀 · 견적조건 작성");
-    if (key === "civil-estimate-manage") return viewBoard(db, "civil-estimate-manage", "토목ㆍ조경팀 · 견적조건 관리");
+  // 구조팀
+  if (key === "struct-checklist") return viewChecklist(db, "구조팀");
+  if (key === "struct-checklist-list") return viewChecklistList(db, "구조팀");
+  if (key === "struct-estimate-write") return viewBoard(db, "struct-estimate-write", "구조팀 · 견적조건 작성");
+  if (key === "struct-estimate-manage") return viewBoard(db, "struct-estimate-manage", "구조팀 · 견적조건 관리");
 
-    // 마감팀
-    if (key === "finish-checklist") return viewChecklist(db, "마감팀");
-    if (key === "finish-checklist-list") return viewChecklistList(db, "마감팀");
-    if (key === "finish-estimate-write") return viewBoard(db, "finish-estimate-write", "마감팀 · 견적조건 작성");
-    if (key === "finish-estimate-manage") return viewBoard(db, "finish-estimate-manage", "마감팀 · 견적조건 관리");
+  // 토목ㆍ조경팀
+  if (key === "civil-checklist") return viewChecklist(db, "토목ㆍ조경팀");
+  if (key === "civil-checklist-list") return viewChecklistList(db, "토목ㆍ조경팀");
+  if (key === "civil-estimate-write") return viewBoard(db, "civil-estimate-write", "토목ㆍ조경팀 · 견적조건 작성");
+  if (key === "civil-estimate-manage") return viewBoard(db, "civil-estimate-manage", "토목ㆍ조경팀 · 견적조건 관리");
 
-    // fallback
-    viewHome(db);
-  }
+  // 마감팀
+  if (key === "finish-checklist") return viewChecklist(db, "마감팀");
+  if (key === "finish-checklist-list") return viewChecklistList(db, "마감팀");
+  if (key === "finish-estimate-write") return viewBoard(db, "finish-estimate-write", "마감팀 · 견적조건 작성");
+  if (key === "finish-estimate-manage") return viewBoard(db, "finish-estimate-manage", "마감팀 · 견적조건 관리");
+
+  // fallback
+  viewHome(db);
+}
+
 
   function render(){
     const db = ensureDB();
