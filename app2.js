@@ -128,69 +128,71 @@ function ensureApprovalShape(log){
  *  - 위치: ensureDB() 내부의 "if (db && typeof db === 'object')" 블록
  * ========================= */
 function ensureDB(){
-  const db = loadDB();
-  seedSampleProjectsIfEmpty(db);
-ensureChecklistStore(db);
+  let db = loadDB();
 
-  if (db && typeof db === "object") {
-    if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
-    if (!Array.isArray(db.tasks)) db.tasks = [];
-    if (!Array.isArray(db.messages)) db.messages = [];
-    if (!Array.isArray(db.approvals)) db.approvals = [];
-    if (!Array.isArray(db.projectPM)) db.projectPM = [];
-    // ✅ 게시판 데이터(신설)
-    if (!db.boards || typeof db.boards !== "object") db.boards = {};
+  // 1) DB가 없으면 seed를 먼저 만든다
+  if (!db || typeof db !== "object"){
+    const seed = {
+      meta:{ version:"0.5", createdAt: nowISO() },
+      users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
+      projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
+      logs: [],
+      checklists: [],
+      sharedFiles: [
+        { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+        { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
+        { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
+      ],
+      tasks: [
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
+        { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
+      ],
+      messages: [],
+      projectPM: [],
+      boards: {
+        "work-standards": [
+          { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
+        ],
+        "mgmt-plan": [],
+        "mgmt-pt": [],
+        "struct-estimate-write": [],
+        "struct-estimate-manage": [],
+        "civil-estimate-write": [],
+        "civil-estimate-manage": [],
+        "finish-estimate-write": [],
+        "finish-estimate-manage": []
+      },
+      deliveryFiles: [],
+      deliveryAccess: [],
+      deliveryAccessRequests: []
+    };
 
-    /* ✅ [ADD] 납품 데이터/권한 */
-    if (!Array.isArray(db.deliveryFiles)) db.deliveryFiles = [];             // 업로드된 납품파일
-    if (!Array.isArray(db.deliveryAccess)) db.deliveryAccess = [];           // 일일 열람 권한(승인 완료)
-    if (!Array.isArray(db.deliveryAccessRequests)) db.deliveryAccessRequests = []; // 권한 요청(대기)
-
-    return db;
+    localStorage.setItem(LS_KEY, JSON.stringify(seed));
+    db = seed;
   }
 
-  const seed = {
-    meta:{ version:"0.5", createdAt: nowISO() },
-    users: [{ userId:"u_staff_1", name:"작업자A", role:"staff" }],
-    projects: [{ projectId:"2025001", projectCode:"2025001", projectName:"(샘플)프로젝트", startDate:"", endDate:"" }],
-    logs: [],
-    checklists: [],
-    sharedFiles: [
-      { fileId: uuid(), name:"[작업명] 파일이름.docx", size:"200 KB", createdAt:"2022-07-07", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
-      { fileId: uuid(), name:"공지사항_관련문서.jpg", size:"1.2 MB", createdAt:"2022-07-13", updatedAt:"2022-07-15", uploader:"업로드 이름 아카이브" },
-      { fileId: uuid(), name:"[날짜] 프로젝트이름.docx", size:"316 KB", createdAt:"2022-07-18", updatedAt:"2022-07-19", uploader:"업로드 이름 아카이브" },
-    ],
-    tasks: [
-      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:23, status:"진행", note:"기능 테스트 및 버그 확인" },
-      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:17, status:"지연", note:"모바일 디자인 제작" },
-      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:64, status:"지연", note:"코드 리뷰" },
-      { taskId: uuid(), title:"사업 이름 예시", owner:"-", progress:49, status:"진행", note:"시스템 유지보수" },
-    ],
-    messages: [],
-    projectPM: [],
-    // ✅ 게시판 시드
-    boards: {
-      "work-standards": [
-        { postId: uuid(), title:"[샘플] 기준서 업로드/공지", author:"관리자", createdAt: nowISO(), body:"건설사별 기준서를 이 게시판에서 관리합니다." }
-      ],
-      "mgmt-plan": [],
-      "mgmt-pt": [],
-      "struct-estimate-write": [],
-      "struct-estimate-manage": [],
-      "civil-estimate-write": [],
-      "civil-estimate-manage": [],
-      "finish-estimate-write": [],
-      "finish-estimate-manage": []
-    },
+  // 2) 여기부터는 db가 항상 object
+  if (!Array.isArray(db.sharedFiles)) db.sharedFiles = [];
+  if (!Array.isArray(db.tasks)) db.tasks = [];
+  if (!Array.isArray(db.messages)) db.messages = [];
+  if (!Array.isArray(db.approvals)) db.approvals = [];
+  if (!Array.isArray(db.projectPM)) db.projectPM = [];
+  if (!db.boards || typeof db.boards !== "object") db.boards = {};
 
-    /* ✅ [ADD] 납품 데이터/권한 (seed) */
-    deliveryFiles: [],
-    deliveryAccess: [],
-    deliveryAccessRequests: []
-  };
-  localStorage.setItem(LS_KEY, JSON.stringify(seed));
-  return seed;
+  if (!Array.isArray(db.deliveryFiles)) db.deliveryFiles = [];
+  if (!Array.isArray(db.deliveryAccess)) db.deliveryAccess = [];
+  if (!Array.isArray(db.deliveryAccessRequests)) db.deliveryAccessRequests = [];
+
+  // ✅ 이 두 함수가 존재한다는 전제라면 여기서 호출
+  if (typeof seedSampleProjectsIfEmpty === "function") seedSampleProjectsIfEmpty(db);
+  if (typeof ensureChecklistStore === "function") ensureChecklistStore(db);
+
+  saveDB(db);
+  return db;
 }
+
 
 
   function getUserId(db){
@@ -270,23 +272,22 @@ const MENU = [
   label: "업무관리",
   kind: "group",
   items: [
-    { key:"work-project", label:"프로젝트 작성", type:"route" },
-    { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
-    { key:"work-standards", label:"건설사별 기준서", type:"board" },
-    { key:"work-log", label:"업무일지", type:"route" },
-    { key:"work-approve", label:"업무일지 승인", type:"route" },
-    { key:"work-time", label:"프로젝트 소요시간", type:"route" },
-    { key:"work-schedule", label:"종합 공정관리", type:"route" },
+  { key:"work-project", label:"프로젝트 작성", type:"route" },
+  { key:"work-pm", label:"프로젝트 PM지정", type:"route" },
+  { key:"work-standards", label:"건설사별 기준서", type:"board" },
+  { key:"work-log", label:"업무일지", type:"route" },
+  { key:"work-approve", label:"업무일지 승인", type:"route" },
+  { key:"work-time", label:"프로젝트 소요시간", type:"route" },
+  { key:"work-schedule", label:"종합 공정관리", type:"route" },
 
-    /* ✅ [ADD] 종합 공정관리 하위 성격 */
-    { key:"work-delivery", label:"납품 프로젝트 관리", type:"route" },
-    { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" }
+  { key:"work-delivery", label:"납품 프로젝트 관리", type:"route" },
+  { key:"work-delivery-upload", label:"납품자료 업로드", type:"route" }, // ✅ 콤마 필수
 
-    { key:"work-check-struct", label:"프로젝트 체크리스트(구조·BIM)" },
-{ key:"work-check-civil",  label:"프로젝트 체크리스트(토목·조경)" },
-{ key:"work-check-finish", label:"프로젝트 체크리스트(마감)" },
+  { key:"work-check-struct", label:"프로젝트 체크리스트(구조·BIM)", type:"route" },
+  { key:"work-check-civil",  label:"프로젝트 체크리스트(토목·조경)", type:"route" },
+  { key:"work-check-finish", label:"프로젝트 체크리스트(마감)", type:"route" },
+]
 
-  ]
 },
 
   {
@@ -370,9 +371,15 @@ function allowedKeysFor(user){
   if (!isStaff(user)) return all;
 
   const denied = new Set([
-    "work-approve",
-    "struct-checklist","civil-checklist","finish-checklist"
-  ]);
+  "work-approve",
+  "work-check-struct",
+  "work-check-civil",
+  "work-check-finish",
+  "struct-checklist",
+  "civil-checklist",
+  "finish-checklist"
+]);
+
   for (const k of denied) all.delete(k);
   return all;
 }
@@ -3492,12 +3499,13 @@ function checklistStatusLabel(s){
   return s || "-";
 }
 function checklistStatusStyle(s){
-  if (s==="draft") return "background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.10);";
-  if (s==="submitted") return "background:rgba(240,138,36,.15);border:1px solid rgba(240,138,36,.28);";
-  if (s==="approved") return "background:rgba(46,204,113,.14);border:1px solid rgba(46,204,113,.28);";
-  if (s==="rejected") return "background:rgba(231,76,60,.14);border:1px solid rgba(231,76,60,.28);";
+  if (s==="draft")    return "background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.10);";
+  if (s==="submitted")return "background:rgba(240,138,36,.16);border:1px solid rgba(240,138,36,.35);";
+  if (s==="approved") return "background:rgba(0,160,90,.14);border:1px solid rgba(0,160,90,.35);";
+  if (s==="rejected") return "background:rgba(220,60,60,.14);border:1px solid rgba(220,60,60,.35);";
   return "background:rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.10);";
 }
+
 
   function openChecklistEditor(db, opts, uid){
   const me = userById(db, uid);
