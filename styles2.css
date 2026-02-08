@@ -1189,3 +1189,11 @@ body.modalOpen2 .calOverlay2{
 .calRibbons2{
   margin-top: 0;
 }
+
+
+#modal2{
+  position: fixed;
+  inset: 0;
+  z-index: 999999; /* ✅ 무조건 최상단 */
+}
+
