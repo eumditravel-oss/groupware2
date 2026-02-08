@@ -1783,9 +1783,17 @@ for (let w=0; w<weeks.length; w++){
   const cells = Array.from(grid.querySelectorAll(".calCell2"));
   const sampleIdx = w*7;
   const sampleCell = cells[sampleIdx] || cells[0];
-  const rowGap = __num(getComputedStyle(grid).rowGap || getComputedStyle(grid).gap);
-  const h = (sampleCell ? sampleCell.offsetHeight : 120);
-  overlay.appendChild(el("div", { style:`height:${h}px;margin-bottom:${rowGap}px;` }));
+  const cells = Array.from(grid.querySelectorAll(".calCell2"));
+const sampleIdx = w*7;
+const sampleCell = cells[sampleIdx] || cells[0];
+
+const gcs = getComputedStyle(grid);
+const rowGap = __num(gcs.rowGap || gcs.gap);
+
+const innerH = (overlay.__innerH != null) ? overlay.__innerH : (sampleCell ? sampleCell.offsetHeight : 120);
+overlay.appendChild(el("div", { style:`height:${innerH}px;margin-bottom:${rowGap}px;` }));
+continue;
+
   continue;
 }
 
@@ -1939,7 +1947,7 @@ laneNode.style.columnGap = overlay.__colGap || (getComputedStyle(grid).columnGap
 
   // weekBlock 안에 레인들을 위에서부터 쌓기
   // (레이아웃 맞추기 위해 weekBlock에 7칸짜리 dummy 행을 하나 둔 뒤, 그 위에 lane들을 stack)
-  const stack = el("div", { style:"grid-column:1 / -1; display:flex; flex-direction:column; gap:6px; padding:10px 10px 0;" },
+  const stack = el("div", { style:"grid-column:1 / -1; display:flex; flex-direction:column; gap:6px; padding:0 10px;" },
     ...lanes.map(x=>x.node)
   );
 
@@ -1953,10 +1961,11 @@ const sampleCell = cells[sampleIdx] || cells[0];
 
 const gcs = getComputedStyle(grid);
 const rowGap = __num(gcs.rowGap || gcs.gap);
-const cellH = (sampleCell ? sampleCell.offsetHeight : 120);
-
-weekBlock.style.minHeight = `${cellH}px`;
+const innerH = (overlay.__innerH != null) ? overlay.__innerH : (sampleCell ? sampleCell.offsetHeight : 120);
+weekBlock.style.minHeight = `${innerH}px`;
 weekBlock.style.marginBottom = `${rowGap}px`;
+weekBlock.style.overflow = "hidden"; // ✅ 레인이 많아도 아래 주와 겹쳐 보이지 않게
+
 
 overlay.appendChild(weekBlock);
 
@@ -1978,43 +1987,66 @@ overlay.appendChild(weekBlock);
 function __num(v){ const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
 
 function getOffsetTopWithin(parent, child){
-  // parent 기준으로 child의 top(px)
   const pr = parent.getBoundingClientRect();
   const cr = child.getBoundingClientRect();
   return cr.top - pr.top;
 }
 
+// ✅ 날짜(일자) 영역 높이만큼 overlay를 아래로 내리기 위한 "셀 내부 top" 계산
+function computeCellInnerMetrics(grid){
+  const cell = grid?.querySelector(".calCell2.has:not(.muted)") || grid?.querySelector(".calCell2:not(.muted)");
+  if (!cell) return { innerTop: 0, innerH: 0 };
+
+  const dayTop = cell.querySelector(".calDayTop2");
+  const cs = getComputedStyle(cell);
+
+  const padTop = __num(cs.paddingTop);
+  const padBottom = __num(cs.paddingBottom);
+  const cellH = cell.offsetHeight;
+
+  const dayH = dayTop ? dayTop.offsetHeight : 0;
+
+  // 날짜줄 아래로 약간 여유
+  const gap = 6;
+
+  const innerTop = padTop + dayH + gap;
+  const innerH = Math.max(0, cellH - innerTop - padBottom);
+
+  return { innerTop, innerH };
+}
+
 function syncOverlayToGrid(wrap, dowRow, grid, overlay){
   if (!wrap || !dowRow || !grid || !overlay) return;
 
-  // wrap을 기준 컨테이너로
   wrap.style.position = "relative";
 
-  // overlay 기본
   overlay.style.position = "absolute";
-  overlay.style.left = "0";
-  overlay.style.right = "0";
-  overlay.style.pointerEvents = "auto"; // span 클릭을 쓰고 있으니 auto 유지(원하면 none으로 바꿔도 됨)
+  overlay.style.pointerEvents = "auto";
 
-  // ✅ 요일헤더(dowRow) 아래부터 overlay 시작
-  const dowCS = getComputedStyle(dowRow);
-  const mb = __num(dowCS.marginBottom);
-  const top = getOffsetTopWithin(wrap, dowRow) + dowRow.offsetHeight + mb;
-  overlay.style.top = `${top}px`;
-
-  // ✅ overlay의 가로는 grid의 content box와 정확히 동일하게
+  // ✅ overlay 가로폭 = grid와 동일
   const gridRect = grid.getBoundingClientRect();
   const wrapRect = wrap.getBoundingClientRect();
   const leftInWrap = gridRect.left - wrapRect.left;
+
   overlay.style.left = `${leftInWrap}px`;
   overlay.style.width = `${grid.offsetWidth}px`;
 
-  // overlay 내부 weekBlock/lanes가 grid 컬럼/갭을 그대로 따라가도록 기준값 저장(인라인 적용용)
+  // ✅ overlay top = "grid top + (셀의 날짜영역 높이)"
+  const gridTop = getOffsetTopWithin(wrap, grid);
+  const { innerTop, innerH } = computeCellInnerMetrics(grid);
+
+  overlay.__innerTop = innerTop;
+  overlay.__innerH = innerH;
+
+  overlay.style.top = `${gridTop + innerTop}px`;
+
+  // grid 컬럼/갭 동기화
   const gcs = getComputedStyle(grid);
   overlay.__gridCols = gcs.gridTemplateColumns;
   overlay.__colGap   = gcs.columnGap || gcs.gap || "0px";
   overlay.__rowGap   = gcs.rowGap   || gcs.gap || "0px";
 }
+
 
 function attachOverlayResizeObserver(wrap, dowRow, grid, overlay, rerenderOverlays){
   // rerender() 전체를 다시 돌리면 비용이 커서, overlay 위치만 맞추고 lanes만 재계산하도록 훅 제공
