@@ -30,13 +30,7 @@ body{
 }
 
 /* ✅ Sidebar logo */
-.logo2{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding: 10px 6px 2px;
-  margin-bottom: 8px;
-}
+
 .logoMark2{
   width: 34px;
   height: 34px;
@@ -1228,4 +1222,25 @@ body.modalOpen2 .calOverlay2{
     height: 28px;
     max-width: 220px;
   }
+}
+
+/* ✅ sidebar logo3.png 크기 강제 (img 케이스) */
+.logo2 img{
+  height: 44px;          /* 원하는 높이로: 36~56 사이 추천 */
+  width: auto !important;
+  max-width: 100%;
+  object-fit: contain;
+  display:block;
+}
+
+/* ✅ logo3.png가 배경으로 깔린 경우 강제 축소/반복 방지 */
+body{
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 520px auto; /* 필요시 360~720 조절 */
+}
+
+/* ✅ (최후) logo3.png 배경이 어디에 있든 강제로 제거 */
+body, .layout2, .view2, .card2{
+  background-image: none !important;
 }
