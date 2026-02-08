@@ -23,7 +23,7 @@ body{
 .layout2{
   max-width: 1280px;
   margin: 0 auto;
-  padding: 6px 6px 24px;
+  padding: 4px 4px 24px;
   display:grid;
   grid-template-columns: 280px 1fr;
   gap: 16px;
